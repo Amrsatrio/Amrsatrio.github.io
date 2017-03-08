@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>GO-JEK Web</title>
+		<script src="jquery-3.1.1.min.js"></script>
+		<script src="underscore-min.js"></script>
+		<script async defer src='https://maps.googleapis.com/maps/api/js?key=AIzaSyDpfUyXuE1AJSwg_vZBWrh7wIX9dvSzC7Y&libraries=geometry'></script>
+		<link href="util-opentype.css" type="text/css" rel="stylesheet" />
+		<style>
+			@font-face {
+				font-family: "cera";
+				src: url("fonts/CeraPRO-Bold.woff") format("woff");
+				font-weight: 700;
+				font-style: normal;
+			}
+
+			@font-face {
+				font-family: "cera";
+				src: url("fonts/CeraPRO-Medium.woff") format("woff");
+				font-weight: 500;
+				font-style: normal;
+			}
+
+			@font-face {
+				font-family: "cera";
+				src: url("fonts/CeraPRO-Regular.woff") format("woff");
+				font-weight: 400;
+				font-style: normal;
+			}
+
+			@font-face {
+				font-family: "lemonmilk";
+				src: url("fonts/LemonMilk.otf") format("opentype");
+				font-weight: bold;
+				font-style: normal;
+			}
+
+			:root {
+				--settings-padding-hor: 16px;
+				--settings-padding-ver: 6px;
+				--global-max-width: 640px;
+				--estimated-cost-height: 64px;
+			}
+
+			* {
+				font-family: "cera";
+				box-sizing: border-box;
+			}
+
+			body {
+				margin: 0;
+			}
+
+			body, input, button, select, option {
+				font-size: 18px;
+			}
+
+			h1 {
+				text-align: center;
+				font-family: "lemonmilk";
+			}
+
+			.container {
+				position: absolute;
+				width: 100%;
+				height: 100%;
+				overflow: auto;
+				background: url("background.svg") bottom center no-repeat #f1f1f1;
+				background-size: contain;
+			}
+
+			.wrapper {
+				width: var(--global-max-width);
+				margin: 8px auto;
+			}
+
+			img {
+				width: 100%;
+			}
+
+			.card {
+				width: var(--global-max-width);
+				background: white;
+				border-radius: 2px;
+				display: flex;
+				flex-direction: column;
+				margin-top: 4px;
+			}
+
+			.card:first-child {
+				margin-top: 0;
+			}
+
+			.cardBG {
+				/*align-content: stretch;*/
+				height: 200px;
+				background-position: center;
+				background-size: cover;
+			}
+
+			.cardContent {
+				padding: 20px;
+			}
+
+			.cardContent .primary {
+				font-weight: bold;
+			}
+
+			#goFoodSearchList .card, #cuisines .card, #shortcuts .card, .clickable {
+				cursor: pointer;
+			}
+
+			.textSeparator {
+				background: #f1f1f1;
+				padding: 4px var(--settings-padding-hor);
+				font-weight: bold;
+				color: #757575;
+			}
+
+			.settingsBox {
+				padding: var(--settings-padding-ver) var(--settings-padding-hor);
+				background-color: white;
+				border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+			}
+
+			.settingsBox:last-child {
+				border-bottom: initial;
+			}
+
+			.twoColumn {
+				display: flex;
+				align-items: center;
+			}
+
+			.twoColumn > .cLeft {
+				flex-grow: 1;
+			}
+
+			.loginForm {
+				width: 50%;
+				margin: auto;
+			}
+
+			.loginForm input, .loginForm button {
+				width: 100%;
+				margin-bottom: 20px;
+			}
+
+			#destName, #goRideFromName, #goRideToName, #bookingFrom > .cLeft > .name, #bookingTo > .cLeft > .name {
+				font-weight: bold;
+			}
+
+			#bookingFrom > .cLeft, #bookingTo > .cLeft {
+				padding-left: 16px;
+			}
+
+			#goRideFrom input, #goRideTo input {
+				width: 100%;
+			}
+
+			.foodItemBottomRow input[type=text] {
+				width: 100%;
+			}
+
+			.threeColumn {
+				display: flex;
+				flex-flow: row wrap;
+				justify-content: space-between;
+			}
+
+			.threeColumn > div {
+				width: calc(33.33% - 4px);
+				margin-bottom: 6px;
+				margin-top: 0;
+			}
+
+			.threeColumn div {
+				text-align: center;
+			}
+
+			#cuisines .card {
+				color: white;
+				height: 85px;
+				display: table;
+			}
+
+			#cuisines .card .cardContent {
+				display: table-cell;
+				vertical-align: middle;
+				background: rgba(0, 0, 0, 0.24);
+			}
+
+			[data-name=foodMerchantDetails] {
+				display: flex;
+				flex-direction: column;
+				overflow: none;
+			}
+
+			[data-name=foodMerchantDetails] .scrollingContent {
+				flex: 1;
+				overflow: auto;
+			}
+
+			.estimatedCost {
+				height: var(--estimated-cost-height);
+				background: #ffcdd2;
+			}
+
+			.estimatedCost > div {
+				width: var(--global-max-width);
+				margin: 0 auto;
+				padding: 8px var(--settings-padding-hor);
+			}
+
+			.orderButton {
+				background: #8BC34A;
+			}
+
+			.orderButton > div {
+				text-align: center;
+				color: white;
+			}
+		</style>
+		<script src="GoJekWeb.js"></script>
+	</head>
+	<body>
+		<div class="siteWrapper pnum lnum">
+			<div class="container" data-name="login">
+				<div class="wrapper">
+					<h1>GO-JEK Sign In</h1>
+					<form action="about:blank" method="get" onsubmit="loginSubmit(); return (false);" class="loginForm">
+						<input type="email" name="email" placeholder="Email" id="email" required />
+						<input type="password" name="password" placeholder="Password" id="password" required />
+						<button type="submit" id="submit">Sign in</button>
+					</form>
+					<div style="text-align: center;"><b>DISCLAIMER</b><br>This web port of Android version of GO-JEK is very unstable and very experimental. This app mostly fails to validate your request and can't handle errors properly. Double check your order details including your GO-PAY balance when ordering. If you did a mistake because of ordering improperly, do not blame me because of that. I recommend you to bring your phone with GO-JEK app installed. This app is not a total replacement of the mobile app. Use this app <b>at your own risk</b>.<br>~ AS</div>
+				</div>
+			</div>
+			<div class="container" data-name="home">
+				<div class="wrapper">
+					<h1>GO-JEK</h1>
+					<div><button onclick="showContainer('bookingHistory');">History</button><button onclick="window.open('https://www.go-jek.com/credits/top-up', '_blank');">GO-PAY: Rp<span class="goPayBalance"></span></button><button onclick="showContainer('goPoints');">GO-POINTS: <span class="goPointsBalance"></span></button></div>
+					<button onclick="showContainer('goRide');">GO-RIDE</button>
+					<button onclick="showContainer('goFood');">GO-FOOD</button>
+				</div>
+			</div>
+			<div class="container" data-name="goPoints">
+				<div class="wrapper">
+					<button onclick='showContainer("home");'>< Back</button>
+					<h1>GO-POINTS</h1>
+					<div id="goPointsMainText">
+						<div class="settingsBox">Your points: <span class="goPointsBalance">0</span></div>
+						<div class="settingsBox">Your tokens: <span class="goPointsTokenBalance">0</span> <button disabled id="redeemToken">Redeem 1</button></div>
+					</div>
+					<div class="textSeparator">Vouchers coming soon to this web app</div>
+				</div>
+			</div>
+			<div class="container" data-name="goRide">
+				<div class="wrapper">
+					<button onclick='showContainer("home");'>< Back</button>
+					<h1>GO-RIDE</h1>
+					<div id="goRideMap" style="height: 400px;"></div>
+
+					<div class="textSeparator">Choose pick up location</div>
+					<div class="settingsBox" id="goRideFrom">
+						<div><input type="text" id="goRideFromName" placeholder="Address" /></div>
+						<div><input type="text" id="goRideFromNote" placeholder="Add notes" /></div>
+					</div>
+					<div id="goRideHistoryFrom"></div>
+					<div id="goRideSuggestionFrom">Suggestion from</div>
+
+					<div class="textSeparator">Choose destination</div>
+					<div class="settingsBox" id="goRideTo">
+						<div><input type="text" id="goRideToName" placeholder="Address" /></div>
+						<div><input type="text" id="goRideToNote" placeholder="Add notes" /></div>
+					</div>
+					<div id="goRideHistoryTo"></div>
+					<div id="goRideSuggestionTo">Suggestion to</div>
+
+					<div class="textSeparator"></div>
+					<div class="settingsBox clickable orderButton"><div>ORDER</div></div>
+				</div>
+			</div>
+			<div class="container" data-name="goFood">
+				<div class="wrapper">
+					<button onclick='showContainer("home");'>< Back</button>
+					<h1>GO-FOOD</h1>
+					<div><button onclick="showSearch()" style="width: 100%;">Search...</button></div>
+					<div class="threeColumn" id="shortcuts"></div>
+					<div class="threeColumn" id="cuisines"></div>
+				</div>
+			</div>
+			<div class="container" data-name="goFoodSearch">
+				<div class="wrapper">
+					<button onclick='showContainer("goFood");'>< Back</button>
+					<h1>Search</h1>
+					<div class="twoColumn" id="foodSearch">
+						<input type="text" id="foodSearchQuery" class="cLeft" />
+						<button onclick="loadGoFoodSearch();" id="foodSearchQuerySubmit" class="cRight">Search</button>
+					</div>
+					<div id="goFoodSearchList"></div>
+				</div>
+			</div>
+			<div class="container" data-name="bookingHistory">
+				<div class="wrapper">
+					<button onclick='showContainer("home");'>< Back</button>
+					<h1>History</h1>
+					<div class='textSeparator'>In progress</div>
+					<div id='inProgressList'></div>
+					<div class='textSeparator'>Completed</div>
+					<div id='completedList'></div>
+				</div>
+			</div>
+			<div class="container" data-name="bookingCancel">
+				<div class="wrapper">
+					<button onclick='showContainer("viewBooking");'>< Back</button>
+					<h1>Cancellation reason</h1>
+					<div class='textSeparator'>May we know why you're canceling this order?</div>
+					<div id='cancelList'></div>
+					<button id='cancelConfirm' style="width: 100%;" disabled>Cancel order</button>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>
