@@ -46,7 +46,7 @@ var failedMap;
 var failedMarker;
 var failedSelectLatLng;
 var FAKE_APPVER = "2.17.1";
-var FAKE_UNIQUE_ID = "788f6110c67f8070"; //"788f6110c67f8070";
+var FAKE_UNIQUE_ID = "0123456789abcdef"; //"788f6110c67f8070";
 
 function createLoginRequest(email, password) {
 	return {
@@ -751,7 +751,7 @@ function updateBookingContents() {
 		$(".note", bookingFrom).text(address.originNote);
 		$(".name", bookingTo).text(address.destinationName);
 		$(".note", bookingTo).text(address.destinationNote);
-		
+
 		if (currentBookingData.serviceType == 5) {
 			$("#bookingFoodItemsTitle").show();
 			var bookingFoodItems = $("#bookingFoodItems").empty().show();
