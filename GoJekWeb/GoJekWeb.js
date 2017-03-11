@@ -1,5 +1,5 @@
 var currentLocation;
-var accessToken;
+var accessToken = "";
 var refreshToken;
 var theCustomer;
 var currentResto;
@@ -45,8 +45,9 @@ var goRideSelectTo = false;
 var failedMap;
 var failedMarker;
 var failedSelectLatLng;
-var FAKE_APPVER = "2.17.1";
+var FAKE_APPVER = "2.17.2";
 var FAKE_UNIQUE_ID = "0123456789abcdef"; //"788f6110c67f8070";
+var FAKE_IMEI = "305825702132830";
 
 function createLoginRequest(email, password) {
 	return {
@@ -59,7 +60,7 @@ function createLoginRequest(email, password) {
 
 function loginSubmit() {
 	var submitButton = $("#submit");
-	submitButton.attr('disabled', true);
+	setEnabled(submitButton, false);
 	var kvpairs = createLoginRequest($("#email")[0].value, $("#password")[0].value);
 	$.ajax({
 		url: "https://api.gojekapi.com" + Profile.LOGIN,
@@ -86,8 +87,12 @@ function loginSubmit() {
 				accessToken = response.access_token;
 				refreshToken = response.refresh_token;
 				theCustomer = response.customer;
-				submitButton.removeAttr("disabled");
+				$("#homeCustomerName").text(theCustomer.name);
+				$("#homeCustomerEmail").text(theCustomer.email);
+				$("#homeCustomerPhone").text(formatPhoneNumber(theCustomer.phone));
+				setEnabled(submitButton, true);
 				showContainer("home");
+				$(".tab:first-child", $("[data-tabContainerName=HOME]")).click();
 			} else {
 				alert(response.message);
 				submitButton.removeAttr("disabled");
@@ -134,13 +139,58 @@ $(document).ready(function() {
 	}, {
 		enableHighAccuracy: true
 	});
+	$(".tabContents:not(:first-child)").hide();
+	var tabContainer = $(".tabContainer").append("<div class='tabIndicator'></div>").each(function() {
+		var thisJq = $(this);
+		if ($(".active", thisJq).length == 0) {
+			$(".tab:first-child", thisJq).addClass("active");
+		}
+		updateTabIndicator(thisJq.attr("data-tabContainerName"));
+	});
+	$(".tab").click(function(e) {
+		var thisJq = $(this);
+		if (thisJq.hasClass("active")) {
+			return;
+		}
+		var thisParentJq = thisJq.parent();
+		var tabContentContainerJq = $(".tabContentsContainer[data-tabContainerName=" + thisParentJq.attr("data-tabContainerName") + "]");
+		$(".tabContents", tabContentContainerJq).hide();
+		$(".tabContents[data-tabName=" + thisJq.attr("data-tabName") + "]", tabContentContainerJq).show();
+		$(".tab.active", thisParentJq).removeClass("active");
+		thisJq.addClass("active");
+		updateTabIndicator(thisParentJq.attr("data-tabContainerName"), true);
+	});
 	$("#foodSearchQuery").keypress(function(e) {
 		if (e.which == 13) {
 			$("#foodSearchQuerySubmit").click();
 		}
 	});
+	$("#logout").click(logout);
 	showContainer("login");
 });
+
+function updateTabIndicator(tabName, animate) {
+	var tabContainer = $(".tabContainer[data-tabContainerName=" + tabName + "]");
+	var tabIndicator = $(".tabIndicator", tabContainer);
+	var left = $(".active", tabContainer)[0].getBoundingClientRect().left - tabContainer[0].getBoundingClientRect().left;
+	var width = $(".active", tabContainer).width();
+	if (animate) {
+		tabIndicator.finish().animate({
+			width: width,
+			left: left
+		}, 250);
+	} else {
+		tabIndicator.width(width).css("left", left);
+	}
+}
+
+function logout() {
+	requestData("/gojek/v2/customer/logout", {}, function(data) {
+		if (data.status == "OK") {
+			showContainer("login");
+		}
+	}, true, {});
+}
 
 // function loadGoFoodCategories() {
 // 	var list = $("#goFoodCategories ul");
@@ -432,6 +482,9 @@ function showOrder() {
 		if (currentFoodCart.length < 1) {
 			alert("No items in cart");
 			return;
+		} else if ($.isEmptyObject(selectedDest)) {
+			alert("Destination not yet selected");
+			return;
 		}
 
 		makeBooking_goFood();
@@ -591,13 +644,15 @@ function makeBooking_goFood() {
 			"serviceType": 5
 		}]
 	};
-	requestData(Booking.MAKE, {}, function(data) {
-		$("[data-name=foodMerchantDetails], [data-name=foodCart]").remove();
-		showContainer("home");
-
-		if (data.errorMessage == null)
+	xRequestData(Booking.MAKE, {}, function(data) {
+		if (data.errorMessage == null) {
 			alert("Your booking has been placed with no. " + data.orderNo + ". Check the booking via the history page.");
-	}, true, payload);
+			$("[data-name=foodMerchantDetails], [data-name=foodCart]").remove();
+			showContainer("home");
+		} else {
+			alert("Booking failed:\n" + data.errorMessage);
+		}
+	}, "POST", payload);
 }
 
 function isNullOrEmpty(paramString) {
@@ -669,8 +724,7 @@ function showBooking(id) {
 		.append("<div class='settingsBox twoColumn' id='bookingFrom'><div>From</div><div class='cLeft'><div class='name'></div><div class='note'></div></div></div>")
 		.append("<div class='settingsBox twoColumn' id='bookingTo'><div>To</div><div class='cLeft'><div class='name'></div><div class='note'></div></div></div>")
 		.append("<div id='bookingMap' style='height: 400px;'></div>")
-		.append("<div class='settingsBox'><div id='driverInfo'></div></div>")
-		.append("<div class='settingsBox' id='bookingStatusText'></div>")
+		.append("<div class='settingsBox'><div id='driverInfo'></div><div id='bookingStatusText'></div></div>")
 		.append($("<div class='textSeparator' id='bookingFoodItemsTitle'>Food items</div>").hide())
 		.append($("<div id='bookingFoodItems'></div>").hide())
 		.append($("<button id='instantRate'>Rate 5 stars</button>").hide().click(function() {
@@ -698,15 +752,22 @@ function reqDataUpdateBooking() {
 function closeBooking() {
 	clearInterval(bookingInterval);
 	$(".container[data-name=viewBooking]").remove();
-	showContainer("bookingHistory");
+	showContainer("home");
 }
 
 function updateBookingContents() {
 	// TODO: MAKE IT LIKE IN THE REAL GOJEK APP
 	var address = currentBookingData.addresses[0];
 	var driverFound = currentBookingData.driverId != null;
-	var driverInfo = driverFound ? [currentBookingData.driverName, currentBookingData.driverPhone, currentBookingData.noPolisi.replaceAll(" ", "")].join(", ") : "";
-	$("#driverInfo").html(isGoJekCompleteBooking(currentBookingData) ? getStatusMessage(currentBookingData) + (driverFound ? "<br>" + driverInfo : "") : (!driverFound ? "Finding driver" : driverInfo));
+	var driverInfo = driverFound ? [currentBookingData.driverName, formatPhoneNumber(currentBookingData.driverPhone), formatLicensePlate(currentBookingData.noPolisi)].join(", ") : "";
+	$("#driverInfo").html(driverInfo);
+	//I NEED TO LOOK AT THE CLIENT ONCE MORE
+	var bookingCancel = $("#bookingCancel");
+	setEnabled(bookingCancel.unbind("click").click(function() {
+		showContainer("bookingCancel");
+	}), !isGoJekCompleteBooking(currentBookingData));
+
+	$("#bookingStatusText").text(getStatusMessageAndControlCancelButton(currentBookingData, bookingCancel));
 	var instantRate = $("#instantRate");
 
 	if (isGoJekCompleteBooking(currentBookingData) && currentBookingData.serviceType == 5 && currentBookingData.rate == null && !isCanceled(currentBookingData)) {
@@ -714,10 +775,6 @@ function updateBookingContents() {
 	} else {
 		instantRate.hide();
 	}
-
-	setEnabled($("#bookingCancel").unbind("click").click(function() {
-		showContainer("bookingCancel");
-	}), !isGoJekCompleteBooking(currentBookingData));
 
 	if (bookingPolyline != null) bookingPolyline.setMap(null);
 	if (bookingOriginMarker != null) bookingOriginMarker.setMap(null);
@@ -759,7 +816,7 @@ function updateBookingContents() {
 
 			for (var i in routeItems) {
 				var item = routeItems[i];
-				var theRow = $("<div class='settingsBox'><div class='twoColumn'><div class='cLeft'><div>" + item.itemName + "</div><div>" + (item.itemDescription == null ? "" : item.itemDescription) + "</div></div><div class='cRight'>Rp" + item.price.formatMoney(0) + "</div></div><div class='twoColumn'><div class='cLeft'>" + item.notes + "</div><div class='quantity cRight'>" + item.quantity + "</div></div></div>");
+				var theRow = $("<div class='settingsBox'><div class='twoColumn'><div class='cLeft'><div>" + item.itemName + "</div><div>" + (item.itemDescription == null ? "" : item.itemDescription) + "</div></div><div class='cRight'>Rp" + item.price.formatMoney(0) + "</div></div><div class='twoColumn'><div class='cLeft'>" + item.notes + "</div><div class='cRight'>x" + item.quantity + "</div></div></div>");
 				bookingFoodItems.append(theRow);
 			}
 		}
@@ -776,51 +833,6 @@ function updateBookingContents() {
 		icon: "http://maps.google.com/mapfiles/ms/icons/green-dot.png"
 	});
 	bookingDriverMarker.setMap(bookingMap);
-	return;
-	//BOTTOM ARE DEAD CODE-- I NEED TO LOOK AT THE CLIENT ONCE MORE
-
-	var statusText = "";
-	if (currentBookingData.statusBooking == 7) {
-		// disable cancel button, show driver actions
-		if (currentBookingData.serviceType == 5) {
-			statusText = "Delivering food";
-		} else if (currentBookingData.serviceType == 6) {
-			statusText = "Delivering item";
-		}
-
-		// DriverOnTheWayPresenter.access$200(this.this$0);
-		// if (currentBookingData.serviceType != 13 && currentBookingData.serviceType != 24) {
-		// 	if (DriverOnTheWayPresenter.access$300(this.this$0, false)) {
-		// 		loadDriverIcon(DriverOnTheWayPresenter.access$400(this.this$0).ˊॱ, DriverOnTheWayPresenter.access$000(this.this$0).ˊ.latitude, DriverOnTheWayPresenter.access$000(this.this$0).ˊ.longitude, false);
-		// 	} else {
-		// 		loadDefaultBikeIcon(DriverOnTheWayPresenter.access$000(this.this$0).ˊ.latitude, DriverOnTheWayPresenter.access$000(this.this$0).ˊ.longitude);
-		// 	}
-		// } else if (DriverOnTheWayPresenter.access$300(this.this$0, true)) {
-		// 	loadDriverIcon(DriverOnTheWayPresenter.access$400(this.this$0).ʼ, DriverOnTheWayPresenter.access$000(this.this$0).ˊ.latitude, DriverOnTheWayPresenter.access$000(this.this$0).ˊ.longitude, true);
-		// } else {
-		// 	loadDefaultCarIcon(DriverOnTheWayPresenter.access$000(this.this$0).ˊ.latitude, DriverOnTheWayPresenter.access$000(this.this$0).ˊ.longitude);
-		// }
-	} else {
-		if (currentBookingData.serviceType == 6) {
-			statusText = "On the way";
-		} else {
-			// setBookingNoEta(this.this$0.computeEta(DriverOnTheWayPresenter.access$000(this.this$0).ˋ.intValue()));
-			statusText = "Picking up food";
-		}
-
-		// if (currentBookingData.serviceType != 13 && currentBookingData.serviceType != 24) {
-		// 	if (DriverOnTheWayPresenter.access$300(this.this$0, false)) {
-		// 		loadDriverIcon(DriverOnTheWayPresenter.access$400(this.this$0).ˊॱ, DriverOnTheWayPresenter.access$000(this.this$0).ˊ.latitude, DriverOnTheWayPresenter.access$000(this.this$0).ˊ.longitude, false);
-		// 	} else {
-		// 		loadDefaultBikeIcon(DriverOnTheWayPresenter.access$000(this.this$0).ˊ.latitude, DriverOnTheWayPresenter.access$000(this.this$0).ˊ.longitude);
-		// 	}
-		// } else if (DriverOnTheWayPresenter.access$300(this.this$0, true)) {
-		// 	loadDriverIcon(DriverOnTheWayPresenter.access$400(this.this$0).ʼ, DriverOnTheWayPresenter.access$000(this.this$0).ˊ.latitude, DriverOnTheWayPresenter.access$000(this.this$0).ˊ.longitude, true);
-		// } else {
-		// 	loadDefaultCarIcon(DriverOnTheWayPresenter.access$000(this.this$0).ˊ.latitude, DriverOnTheWayPresenter.access$000(this.this$0).ˊ.longitude);
-		// }
-	}
-	$("#bookingStatusText").text(statusText);
 }
 
 function rateBookingGoFood(orderNo, stars, feedback, callback) {
@@ -844,7 +856,7 @@ function commaSeparatedLatLng(paramString) {
 	};
 }
 
-function getStatusMessage(paramBooking) {
+function getStatusMessageAndControlCancelButton(paramBooking, cancelButton) {
 	if (paramBooking.statusBooking == 5) {
 		return "Cannot find driver";
 	}
@@ -853,7 +865,61 @@ function getStatusMessage(paramBooking) {
 		return "Canceled by " + paramBooking.cancelBy + ": " + paramBooking.cancelDescription;
 	}
 
-	return "Completed";
+	if (isGoJekCompleteBooking(paramBooking)) {
+		return "Completed";
+	}
+
+	if (paramBooking.driverId == null) {
+		return "Finding driver";
+	}
+
+	switch (paramBooking.serviceType) {
+		case 5:
+		case 6:
+			if (paramBooking.statusBooking == 7) {
+				// disable cancel button, show driver actions
+				setEnabled(cancelButton, false);
+				if (paramBooking.serviceType == 5) {
+					return "Delivering food";
+				} else if (paramBooking.serviceType == 6) {
+					return "Delivering item";
+				}
+
+				// DriverOnTheWayPresenter.access$200(this.this$0);
+				// if (paramBooking.serviceType != 13 && paramBooking.serviceType != 24) {
+				// 	if (DriverOnTheWayPresenter.access$300(this.this$0, false)) {
+				// 		loadDriverIcon(DriverOnTheWayPresenter.access$400(this.this$0).ˊॱ, DriverOnTheWayPresenter.access$000(this.this$0).ˊ.latitude, DriverOnTheWayPresenter.access$000(this.this$0).ˊ.longitude, false);
+				// 	} else {
+				// 		loadDefaultBikeIcon(DriverOnTheWayPresenter.access$000(this.this$0).ˊ.latitude, DriverOnTheWayPresenter.access$000(this.this$0).ˊ.longitude);
+				// 	}
+				// } else if (DriverOnTheWayPresenter.access$300(this.this$0, true)) {
+				// 	loadDriverIcon(DriverOnTheWayPresenter.access$400(this.this$0).ʼ, DriverOnTheWayPresenter.access$000(this.this$0).ˊ.latitude, DriverOnTheWayPresenter.access$000(this.this$0).ˊ.longitude, true);
+				// } else {
+				// 	loadDefaultCarIcon(DriverOnTheWayPresenter.access$000(this.this$0).ˊ.latitude, DriverOnTheWayPresenter.access$000(this.this$0).ˊ.longitude);
+				// }
+			} else {
+				if (paramBooking.serviceType == 6) {
+					return "On the way";
+				} else {
+					// setBookingNoEta(this.this$0.computeEta(DriverOnTheWayPresenter.access$000(this.this$0).ˋ.intValue()));
+					return "Picking up food";
+				}
+
+				// if (paramBooking.serviceType != 13 && paramBooking.serviceType != 24) {
+				// 	if (DriverOnTheWayPresenter.access$300(this.this$0, false)) {
+				// 		loadDriverIcon(DriverOnTheWayPresenter.access$400(this.this$0).ˊॱ, DriverOnTheWayPresenter.access$000(this.this$0).ˊ.latitude, DriverOnTheWayPresenter.access$000(this.this$0).ˊ.longitude, false);
+				// 	} else {
+				// 		loadDefaultBikeIcon(DriverOnTheWayPresenter.access$000(this.this$0).ˊ.latitude, DriverOnTheWayPresenter.access$000(this.this$0).ˊ.longitude);
+				// 	}
+				// } else if (DriverOnTheWayPresenter.access$300(this.this$0, true)) {
+				// 	loadDriverIcon(DriverOnTheWayPresenter.access$400(this.this$0).ʼ, DriverOnTheWayPresenter.access$000(this.this$0).ˊ.latitude, DriverOnTheWayPresenter.access$000(this.this$0).ˊ.longitude, true);
+				// } else {
+				// 	loadDefaultCarIcon(DriverOnTheWayPresenter.access$000(this.this$0).ˊ.latitude, DriverOnTheWayPresenter.access$000(this.this$0).ˊ.longitude);
+				// }
+			}
+	}
+
+	return "";
 }
 
 function initBookingMap() {
@@ -974,6 +1040,45 @@ function initContainer(name, elm) {
 			updateGoPointsBalance(function(data) {
 				$(".goPointsBalance", elm).text(data.points_balance + " point" + plural(data.points_balance) + ", " + data.tokens_balance + " token" + plural(data.tokens_balance));
 			});
+			requestData(Booking.HISTORY_FULL + theCustomer.id, {}, function(data) {
+				var inProgressBookings = [];
+				var completedBookings = [];
+
+				for (var i in data) {
+					var booking = data[i];
+
+					if (isGoJekCompleteBooking(booking)) {
+						completedBookings.push(booking);
+					} else {
+						inProgressBookings.push(booking);
+					}
+				}
+
+				var historyAppendable = $("#historyAppendable", elm).empty();
+				
+				if (inProgressBookings.length > 0) {
+					historyAppendable.html("<span class='redCircle'>" + inProgressBookings.length + "</span>");
+				}
+
+				var inProgressList = $("#inProgressList", elm).empty();
+				var completedList = $("#completedList", elm).empty();
+
+				if (inProgressBookings.length < 1) {
+					inProgressList.append("<div class='settingsBox'>You have no in progress bookings</div>");
+				} else {
+					for (var i in inProgressBookings) {
+						inProgressList.append(constructBookingEntry(inProgressBookings[i]));
+					}
+				}
+
+				if (completedBookings.length < 1) {
+					completedList.append("<div class='settingsBox'>You have no completed bookings</div>");
+				} else {
+					for (var i in completedBookings) {
+						completedList.append(constructBookingEntry(completedBookings[i]));
+					}
+				}
+			});
 			break;
 		case "goPoints":
 			updateGoPointsBalance(function(data) {
@@ -998,41 +1103,6 @@ function initContainer(name, elm) {
 				setEnabled(redeemToken, data.tokens_balance > 0);
 			});
 			break;
-		case "bookingHistory":
-			requestData(Booking.HISTORY_FULL + theCustomer.id, {}, function(data) {
-				var inProgressBookings = [];
-				var completedBookings = [];
-
-				for (var i in data) {
-					var booking = data[i];
-
-					if (isGoJekCompleteBooking(booking)) {
-						completedBookings.push(booking);
-					} else {
-						inProgressBookings.push(booking);
-					}
-				}
-
-				var inProgressList = $("#inProgressList", elm).empty();
-				var completedList = $("#completedList", elm).empty();
-
-				if (inProgressBookings.length < 1) {
-					inProgressList.append("<div class='settingsBox'>You have no in progress bookings</div>");
-				} else {
-					for (var i in inProgressBookings) {
-						inProgressList.append(constructBookingEntry(inProgressBookings[i]));
-					}
-				}
-
-				if (completedBookings.length < 1) {
-					completedList.append("<div class='settingsBox'>You have no completed bookings</div>");
-				} else {
-					for (var i in completedBookings) {
-						completedList.append(constructBookingEntry(completedBookings[i]));
-					}
-				}
-			});
-			break;
 		case "goRide":
 			initGoRide(elm);
 			break;
@@ -1045,7 +1115,7 @@ function initContainer(name, elm) {
 			}, function(data) {
 				for (var i in data.shortcuts) {
 					var shortcut = data.shortcuts[i];
-					shortcuts.append($("<div class='card cardContent'><img src=" + shortcut.icon.url + " /><div>" + shortcut.name + "</div></div>").click((function(shortcut) {
+					shortcuts.append($("<div class='card cardContent'><img src='" + shortcut.icon.url + "' height='128px' /><div>" + shortcut.name + "</div></div>").click((function(shortcut) {
 						return function() {
 							showSearch(shortcut.code, shortcut.name);
 						};
@@ -1468,7 +1538,7 @@ function xRequestData(req, queries, callback, method, payload) {
 				response = JSON.parse(xhr.responseText);
 			} catch (e) {
 				response = null;
-				console.log("Ajax failed and the response is not in JSON");
+				console.log("Response is not in JSON");
 			}
 
 			callback(response);
@@ -1499,6 +1569,24 @@ function plural(paramInt) {
 
 function makeLocation() {
 	return currentLocation.coords.latitude + "," + currentLocation.coords.longitude;
+}
+
+function formatPhoneNumber(paramString) {
+	paramString.replaceAll(" ", "");
+
+	if (paramString.startsWith("08")) {
+		paramString = paramString.replace("08", "+628");
+	}
+
+	return [paramString.slice(0, 3), paramString.slice(3, 6), paramString.slice(6, 10), paramString.slice(10, 14)].join("-");
+}
+
+function formatLicensePlate(paramString) {
+	paramString = paramString.toUpperCase().replaceAll(" ", "");
+	var regexAreaCode = /^[A-Z]{1,3}/;
+	var regexNumber = /[0-9]{1,4}/;
+	var regexLetter = /[A-Z]{1,3}$/;
+	return [paramString.match(regexAreaCode)[0], paramString.match(regexNumber)[0], paramString.match(regexLetter)[0]].join(" ");
 }
 
 Number.prototype.formatMoney = function(c, d, t) {

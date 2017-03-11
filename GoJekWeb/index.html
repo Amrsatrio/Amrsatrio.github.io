@@ -5,7 +5,7 @@
 		<script src="jquery-3.1.1.min.js"></script>
 		<script src="underscore-min.js"></script>
 		<script async defer src='https://maps.googleapis.com/maps/api/js?key=AIzaSyDpfUyXuE1AJSwg_vZBWrh7wIX9dvSzC7Y&libraries=geometry'></script>
-		<link href="util-opentype.css" type="text/css" rel="stylesheet" />
+		<link href="utility-opentype.min.css" type="text/css" rel="stylesheet" />
 		<style>
 			@font-face {
 				font-family: "cera";
@@ -35,11 +35,19 @@
 				font-style: normal;
 			}
 
+			/*@font-face {
+				font-family: "elevation";
+				src: url("fonts/Elevation.ttf") format("truetype");
+				font-weight: 400;
+				font-style: normal;
+			}*/
+
 			:root {
 				--settings-padding-hor: 16px;
 				--settings-padding-ver: 6px;
 				--global-max-width: 640px;
 				--estimated-cost-height: 64px;
+				--accent-color: #64DD17;
 			}
 
 			* {
@@ -58,6 +66,8 @@
 			h1 {
 				text-align: center;
 				font-family: "lemonmilk";
+				letter-spacing: 2px;
+				text-shadow: #e0e0e0 1px 1px 0px, #e0e0e0 2px 2px 0px, #e0e0e0 3px 3px 0px, #e0e0e0 4px 4px 0px, #e0e0e0 5px 5px 0px, #e0e0e0 6px 6px 0px, #e0e0e0 7px 7px 0px, #e0e0e0 8px 8px 0px, #e0e0e0 9px 9px 0px, #e0e0e0 10px 10px 0px;
 			}
 
 			.container {
@@ -146,7 +156,7 @@
 				margin-bottom: 20px;
 			}
 
-			#destName, #goRideFromName, #goRideToName, #bookingFrom > .cLeft > .name, #bookingTo > .cLeft > .name {
+			#destName, #goRideFromName, #goRideToName, #bookingFrom > .cLeft > .name, #bookingTo > .cLeft > .name, #homeCustomerName {
 				font-weight: bold;
 			}
 
@@ -187,7 +197,7 @@
 			#cuisines .card .cardContent {
 				display: table-cell;
 				vertical-align: middle;
-				background: rgba(0, 0, 0, 0.24);
+				background: rgba(0, 0, 0, 0.4);
 			}
 
 			[data-name=foodMerchantDetails] {
@@ -220,6 +230,50 @@
 				text-align: center;
 				color: white;
 			}
+
+			.tab {
+			    flex: 1;
+			    text-align: center;
+			    height: 48px;
+			    line-height: 40px;
+			    cursor: pointer;
+			    text-transform: uppercase;
+				font-weight: 500;
+			}
+
+			.tab.active {
+				color: var(--accent-color);
+			}
+
+			.tabContainer {
+			    display: flex;
+			    margin-bottom: 8px;
+			    position: relative;
+			}
+
+			.tabIndicator {
+			    position: absolute;
+			    height: 4px;
+			    background: var(--accent-color);
+			    bottom: 0;
+			    pointer-events: none;
+			}
+
+			.clickable, .tab {
+				user-select: none;
+			}
+
+			span.redCircle {
+			    background: #B71C1C;
+			    font-size: 14px;
+			    width: 20px;
+			    height: 20px;
+			    border-radius: 50%;
+			    display: inline-block;
+			    line-height: 20px;
+			    margin-left: 8px;
+			    color: white;
+			}
 		</style>
 		<script src="GoJekWeb.js"></script>
 	</head>
@@ -227,7 +281,7 @@
 		<div class="siteWrapper pnum lnum">
 			<div class="container" data-name="login">
 				<div class="wrapper">
-					<h1>GO-JEK Sign In</h1>
+					<h1>Sign In</h1>
 					<form action="about:blank" method="get" onsubmit="loginSubmit(); return (false);" class="loginForm">
 						<input type="email" name="email" placeholder="Email" id="email" required />
 						<input type="password" name="password" placeholder="Password" id="password" required />
@@ -239,9 +293,37 @@
 			<div class="container" data-name="home">
 				<div class="wrapper">
 					<h1>GO-JEK</h1>
-					<div><button onclick="showContainer('bookingHistory');">History</button><button onclick="window.open('https://www.go-jek.com/credits/top-up', '_blank');">GO-PAY: Rp<span class="goPayBalance"></span></button><button onclick="showContainer('goPoints');">GO-POINTS: <span class="goPointsBalance"></span></button></div>
-					<button onclick="showContainer('goRide');">GO-RIDE</button>
-					<button onclick="showContainer('goFood');">GO-FOOD</button>
+					<div class="tabContainer" data-tabContainerName="HOME">
+						<div class="tab" data-tabName="HOME">Home</div>
+						<div class="tab" data-tabName="HISTORY">History<span id="historyAppendable"></span></div>
+						<div class="tab" data-tabName="PROFILE">My Account</div>
+					</div>
+					
+					<div class="tabContentsContainer" data-tabContainerName="HOME">
+						<div class="tabContents" data-tabName="HOME">
+							<div>
+								<button onclick="window.open('https://www.go-jek.com/credits/top-up', '_blank');">GO-PAY: Rp<span class="goPayBalance"></span></button>
+								<button onclick="showContainer('goPoints');">GO-POINTS: <span class="goPointsBalance"></span></button>
+							</div>
+							<button onclick="showContainer('goRide');">GO-RIDE</button>
+							<button onclick="showContainer('goFood');">GO-FOOD</button>
+						</div>
+						<div class="tabContents" data-tabName="HISTORY">
+							<div class="textSeparator">In progress</div>
+							<div id="inProgressList"></div>
+							<div class="textSeparator">Completed</div>
+							<div id="completedList"></div>
+						</div>
+						<div class="tabContents" data-tabName="PROFILE">
+							<div class="settingsBox">
+								<div id="homeCustomerName"></div>
+								<div id="homeCustomerEmail"></div>
+								<div id="homeCustomerPhone"></div>
+							</div>
+							<div class="textSeparator"></div>
+							<div class="settingsBox clickable" id="logout">Sign out</div>
+						</div>
+					</div>
 				</div>
 			</div>
 			<div class="container" data-name="goPoints">
@@ -267,7 +349,7 @@
 						<div><input type="text" id="goRideFromNote" placeholder="Add notes" /></div>
 					</div>
 					<div id="goRideHistoryFrom"></div>
-					<div id="goRideSuggestionFrom">Suggestion from</div>
+					<div id="goRideSuggestionFrom"></div>
 
 					<div class="textSeparator">Choose destination</div>
 					<div class="settingsBox" id="goRideTo">
@@ -275,7 +357,7 @@
 						<div><input type="text" id="goRideToNote" placeholder="Add notes" /></div>
 					</div>
 					<div id="goRideHistoryTo"></div>
-					<div id="goRideSuggestionTo">Suggestion to</div>
+					<div id="goRideSuggestionTo"></div>
 
 					<div class="textSeparator"></div>
 					<div class="settingsBox clickable orderButton"><div>ORDER</div></div>
@@ -299,16 +381,6 @@
 						<button onclick="loadGoFoodSearch();" id="foodSearchQuerySubmit" class="cRight">Search</button>
 					</div>
 					<div id="goFoodSearchList"></div>
-				</div>
-			</div>
-			<div class="container" data-name="bookingHistory">
-				<div class="wrapper">
-					<button onclick='showContainer("home");'>< Back</button>
-					<h1>History</h1>
-					<div class='textSeparator'>In progress</div>
-					<div id='inProgressList'></div>
-					<div class='textSeparator'>Completed</div>
-					<div id='completedList'></div>
 				</div>
 			</div>
 			<div class="container" data-name="bookingCancel">
