@@ -17,5 +17,6 @@ For now I am not allowing anyone to contribute to this project.
 * "bisa ga tanpa ngelakuin yg aneh2 di atas?" ga bisa, ini emang dari google chromenya, gw apa2in kode gw tetep aja ga bisa
 * "emg harus google chrome?" iya soalnya cuman chrome yg bisa dimatiin CORSnya
 * "kok pas login check your internet connection?" lakuin lagi Steps di atas
-* "mana gocar? mana gosend? mana gomart?" ntar gw bikin. buat skrg goride sm gofood dulu, yg plg sering dipake
+* "mana gocar? mana gosend? mana gomart?" ntar gw bikin. buat skrg GO-RIDE sama GO-FOOD dulu, yg paling sering dipake
 * "geolocation failed, bla bla bla error code 403?" kadang2 emg gitu nyebelin. kan bisa pilih lokasi manual
+* "pas ngeklik ORDER di goride kok ga ada hasilnya?" masalah ini lagi gw cari tau penyebabnya. gw blm tau gimana cara betulinnya selain ngorder dulu lewat app mobile
