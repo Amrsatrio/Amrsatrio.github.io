@@ -1,10 +1,3 @@
-var currentLocation;
-var accessToken = "";
-var refreshToken;
-var theCustomer;
-var currentResto;
-var currentFoodCart;
-var currentContainerId = 0;
 var Profile = {
 	LOGIN: "/gojek/v2/login"
 }
@@ -30,37 +23,56 @@ var GoPoints = {
 	NEXT_TOKEN: "/gopoints/v1/next-points-token",
 	REDEEM_TOKEN: "/gopoints/v1/redeem-points-token"
 }
-var selectedDest;
-var useGoPay = true;
-var markers = [];
-var map;
-var destSelected = false;
 var POLYLINE_WEIGHT = 3;
 var DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+var FAKE_APPVER = "2.17.2";
+var FAKE_UNIQUE_ID = "0123456789abcdef"; //"788f6110c67f8070";
+var FAKE_IMEI = "305825702132830";
+var currentLocation;
+var accessToken = "";
+var refreshToken;
+var theCustomer;
+var currentContainerId = 0;
+var currentResto;
+var currentFoodCart;
+var goFoodSelectedDest = {};
+var goFoodUseGoPay = true;
+var markers = [];
+var map;
+var goFoodPolyline;
+var goFoodDestSelected = false;
 var goRideFrom = {};
 var goRideTo = {};
 var goRideFromMarker;
 var goRideToMarker;
 var goRideSelectTo = false;
+var goRideUseGoPay = true;
 var failedMap;
 var failedMarker;
 var failedSelectLatLng;
-var FAKE_APPVER = "2.17.2";
-var FAKE_UNIQUE_ID = "0123456789abcdef"; //"788f6110c67f8070";
-var FAKE_IMEI = "305825702132830";
 
 function createLoginRequest(email, password) {
 	return {
-		"username": email,
-		"client_id": "trusted-client",
-		"grant_type": "password",
-		"password": password
+		username: email,
+		client_id: "trusted-client",
+		grant_type: "password",
+		password: password
 	};
 }
 
+// function createLoginRequestRefreshToken(email, refreshToken) {
+// 	return {
+// 		username: email,
+// 		client_id: "trusted-client",
+// 		grant_type: "refresh_token",
+// 		refresh_token: refreshToken
+// 	};
+// }
+
 function loginSubmit() {
 	var submitButton = $("#submit");
-	setEnabled(submitButton, false);
+	var loader = $(".loginForm .loader");
+	showHide(submitButton, loader, false);
 	var kvpairs = createLoginRequest($("#email")[0].value, $("#password")[0].value);
 	$.ajax({
 		url: "https://api.gojekapi.com" + Profile.LOGIN,
@@ -90,15 +102,25 @@ function loginSubmit() {
 				$("#homeCustomerName").text(theCustomer.name);
 				$("#homeCustomerEmail").text(theCustomer.email);
 				$("#homeCustomerPhone").text(formatPhoneNumber(theCustomer.phone));
-				setEnabled(submitButton, true);
+				showHide(submitButton, loader, true);
 				showContainer("home");
-				$(".tab:first-child", $("[data-tabContainerName=HOME]")).click();
+				$(".tab:first-child", $("[data-tabcontainername=HOME]")).click();
 			} else {
 				alert(response.message);
-				submitButton.removeAttr("disabled");
+				showHide(submitButton, loader, true);
 			}
 		}
 	});
+}
+
+function showHide(a, b, bool) {
+	if (bool) {
+		a.show();
+		b.hide();
+	} else {
+		a.hide();
+		b.show();
+	}
 }
 
 $(document).ready(function() {
@@ -139,26 +161,22 @@ $(document).ready(function() {
 	}, {
 		enableHighAccuracy: true
 	});
-	$(".tabContents:not(:first-child)").hide();
-	var tabContainer = $(".tabContainer").append("<div class='tabIndicator'></div>").each(function() {
-		var thisJq = $(this);
-		if ($(".active", thisJq).length == 0) {
-			$(".tab:first-child", thisJq).addClass("active");
-		}
-		updateTabIndicator(thisJq.attr("data-tabContainerName"));
-	});
-	$(".tab").click(function(e) {
+	$(".tabContainer").each(applyIndicator);
+	document.arrive(".tabContainer", applyIndicator);
+	$(".tabContentsContainer").each(initTab);
+	document.arrive(".tabContentsContainer", initTab);
+	$(document).on("click", ".tab", function(e) {
 		var thisJq = $(this);
 		if (thisJq.hasClass("active")) {
 			return;
 		}
 		var thisParentJq = thisJq.parent();
-		var tabContentContainerJq = $(".tabContentsContainer[data-tabContainerName=" + thisParentJq.attr("data-tabContainerName") + "]");
+		var tabContentContainerJq = $(".tabContentsContainer[data-tabcontainername=" + thisParentJq.attr("data-tabcontainername") + "]");
 		$(".tabContents", tabContentContainerJq).hide();
-		$(".tabContents[data-tabName=" + thisJq.attr("data-tabName") + "]", tabContentContainerJq).show();
+		$(".tabContents[data-tabname=" + thisJq.attr("data-tabname") + "]", tabContentContainerJq).show();
 		$(".tab.active", thisParentJq).removeClass("active");
 		thisJq.addClass("active");
-		updateTabIndicator(thisParentJq.attr("data-tabContainerName"), true);
+		updateTabIndicator(thisParentJq.attr("data-tabcontainername"), true);
 	});
 	$("#foodSearchQuery").keypress(function(e) {
 		if (e.which == 13) {
@@ -166,14 +184,30 @@ $(document).ready(function() {
 		}
 	});
 	$("#logout").click(logout);
+	$(".loginForm .loader").hide();
 	showContainer("login");
 });
 
+function applyIndicator() {
+	var thisJq = $(this);
+	thisJq.append("<div class='tabIndicator'></div>");
+
+	if ($(".active", thisJq).length == 0) {
+		$(".tab:first-child", thisJq).addClass("active");
+	}
+
+	updateTabIndicator(thisJq.attr("data-tabcontainername"));
+}
+
+function initTab() {
+	$(".tabContents:not(:first-child)", this).hide();
+}
+
 function updateTabIndicator(tabName, animate) {
-	var tabContainer = $(".tabContainer[data-tabContainerName=" + tabName + "]");
+	var tabContainer = $(".tabContainer[data-tabcontainername=" + tabName + "]");
 	var tabIndicator = $(".tabIndicator", tabContainer);
-	var left = $(".active", tabContainer)[0].getBoundingClientRect().left - tabContainer[0].getBoundingClientRect().left;
-	var width = $(".active", tabContainer).width();
+	var left = $(".active", tabContainer)[0].getBoundingClientRect().left - tabContainer[0].getBoundingClientRect().left + tabContainer[0].scrollLeft;
+	var width = $(".active", tabContainer).outerWidth();
 	if (animate) {
 		tabIndicator.finish().animate({
 			width: width,
@@ -253,11 +287,11 @@ function loadGoFoodSearch(stringCategory) {
 var calculatePrices = _.debounce(function() {
 	// TODO: Work with vouchers
 
-	if (polyline != null) {
-		polyline.setMap(null);
+	if (goFoodPolyline != null) {
+		goFoodPolyline.setMap(null);
 	}
 
-	if (!destSelected) {
+	if (!goFoodDestSelected) {
 		return;
 	}
 
@@ -265,19 +299,19 @@ var calculatePrices = _.debounce(function() {
 	requestData(Booking.CALCULATE, {}, function(data) {
 		foodPriceResponse = data;
 		updatePrices();
-		polyline = new google.maps.Polyline({
+		goFoodPolyline = new google.maps.Polyline({
 			path: google.maps.geometry.encoding.decodePath(data.routes[0].routePolyline),
 			geodesic: true,
 			strokeColor: "#0000FF",
 			strokeWeight: POLYLINE_WEIGHT
 		});
-		polyline.setMap(map);
+		goFoodPolyline.setMap(map);
 	}, true, {
 		customerId: theCustomer.id,
-		paymentType: 4, //NON GOPAY = 0
+		paymentType: goFoodUseGoPay ? 4 : 0,
 		routeRequests: [{
-			destinationLatLong: selectedDest.latLong,
-			estimatedPrice: foodEst,
+			destinationLatLong: goFoodSelectedDest.latLong,
+			estimatedPrice: goFoodEstimatedCartPrice,
 			merchantId: currentResto.restaurant.merchant_id,
 			originLatLong: currentResto.restaurant.location,
 			serviceType: 5
@@ -303,16 +337,18 @@ function showFoodMerchantScreen(uuid) {
 		}
 
 		container.append("<h1>" + restaurant.name + "</h1>");
-		var list = $("<div></div>");
-		container.append(list);
+		var tabId = "MERCHANT-" + data.restaurant.merchant_id;
+		var tabs = $("<div></div>").addClass("tabContainer scrolling").attr("data-tabcontainername", tabId);
+		var tabContents = $("<div></div>").addClass("tabContentsContainer").attr("data-tabcontainername", tabId);
 
 		for (var i in data.sections) {
 			var section = data.sections[i];
 			if (section.items.length < 1) {
 				continue;
 			}
-			list.append("<div class='textSeparator'>" + section.name + "</div>");
-			var sectionJq = $("<div></div>")
+			var tabName = "SECTION-" + i;
+			tabs.append("<div class='tab' data-tabname='" + tabName + "'>" + section.name + "</div>");
+			var sectionJq = $("<div></div>").addClass("tabContents").attr("data-tabname", tabName);
 
 			for (var j in section.items) {
 				var itemId = section.items[j];
@@ -321,17 +357,19 @@ function showFoodMerchantScreen(uuid) {
 					var item = data.items[itemIndex];
 
 					if (item.id == itemId) {
-						var listItem = $("<div class='settingsBox clickable twoColumn' onclick='addFoodItemToCart(" + item.shopping_item_id + ");'><div class='cLeft'><div>" + item.name + "</div><div>" + (item.description == null ? "" : item.description) + "</div></div><div class='cRight'>Rp" + item.price.formatMoney(0) + "</div></div>").attr("data-id", item.shopping_item_id);
+						var listItem = $("<div class='settingsBox clickable twoColumn' onclick='addFoodItemToCart(" + item.shopping_item_id + ");'><div class='cGrow'><div>" + item.name + "</div><div>" + (item.description == null ? "" : item.description) + "</div></div><div class='cRight'>Rp" + item.price.formatMoney(0) + "</div></div>").attr("data-id", item.shopping_item_id);
 						sectionJq.append(listItem);
 						break;
 					}
 				}
 			}
 
-			list.append(sectionJq);
+			tabContents.append(sectionJq);
 		}
 
-		cRoot.append("<div class='estimatedCost clickable' id='foodCost' onclick='showOrder();'><div><div>Estimated cost: <b>Rp<span></span></b></div><div>PROCEED TO CART ></div></div></div>");
+		container.append(tabs);
+		container.append(tabContents);
+		cRoot.append("<div class='estimatedCost clickable' id='foodCost' onclick='showGoFoodOrderConfirmation();'><div><div>Estimated cost: <b>Rp<span></span></b></div><div>PROCEED TO CART ></div></div></div>");
 		updateCart();
 		calculatePrices();
 		// var tempText = $("<div>" + JSON.stringify(data) + "</div>");
@@ -354,7 +392,7 @@ function addFoodItemToCart(foodItemId) {
 	var newItemBase = getFoodItemById(foodItemId);
 
 	if (newItemBase == null) {
-		alert("Something went wrong: Food item #" + foodItemId);
+		alert("Something went wrong: Non-existent food item #" + foodItemId);
 		return;
 	}
 
@@ -382,13 +420,13 @@ function getFoodItemById(id) {
 }
 
 function updateCartPrices() {
-	foodEst = 0;
+	goFoodEstimatedCartPrice = 0;
 
 	for (var i in currentFoodCart) {
-		foodEst += currentFoodCart[i].quantity * currentFoodCart[i].price;
+		goFoodEstimatedCartPrice += currentFoodCart[i].quantity * currentFoodCart[i].price;
 	}
 
-	$("#foodCost span").html(foodEst.formatMoney(0));
+	$("#foodCost span").html(goFoodEstimatedCartPrice.formatMoney(0));
 }
 
 function updateCart() {
@@ -405,7 +443,7 @@ function updateCart() {
 		} else {
 			for (var i in currentFoodCart) {
 				var item = currentFoodCart[i];
-				var theRow = $("<div class='settingsBox'><div class='twoColumn'><div class='cLeft'><div>" + item.itemName + "</div><div>" + (item.itemDescription == null ? "" : item.itemDescription) + "</div></div><div class='cRight'>Rp" + item.price.formatMoney(0) + "</div></div><div class='twoColumn'><input type='text' placeholder='Notes' class='cLeft' /><div class='quantity cRight'><button id='min'>-</button>&nbsp;" + item.quantity + "&nbsp;<button id='plus'>+</button></div></div></div>");
+				var theRow = $("<div class='settingsBox'><div class='twoColumn'><div class='cGrow'><div>" + item.itemName + "</div><div>" + (item.itemDescription == null ? "" : item.itemDescription) + "</div></div><div class='cRight'>Rp" + item.price.formatMoney(0) + "</div></div><div class='twoColumn'><input type='text' placeholder='Notes' class='cGrow' /><div class='quantity cRight'><button id='min'>-</button>&nbsp;" + item.quantity + "&nbsp;<button id='plus'>+</button></div></div></div>");
 				cartContainer.append(theRow);
 				theRow.find("input[type=text]").on("input", (function(idx) {
 					return function() {
@@ -435,11 +473,12 @@ function updateCart() {
 }
 
 function resetGoFoodOrder() {
-	destSelected = false;
-	selectedDest = null;
+	goFoodDestSelected = false;
+	goFoodSelectedDest = {};
+	goFoodUseGoPay = true;
 }
 
-function showOrder() {
+function showGoFoodOrderConfirmation() {
 	resetGoFoodOrder();
 	var cRoot = $("<div class='container' data-id='" + currentContainerId + "' data-name='foodCart'></div>");
 	$(".siteWrapper").append(cRoot);
@@ -453,15 +492,15 @@ function showOrder() {
 	wrapper.append("<div class='textSeparator'>Payment</div>");
 	var priceSummary = $("<div class='settingsBox'></div>");
 	wrapper.append(priceSummary);
-	priceSummary.append("<div id='foodCost' class='twoColumn'><div class='cLeft'>Cost (est.)</div><div>Rp<span>0</span></div></div>");
-	priceSummary.append("<div id='deliveryPrice' class='twoColumn'><div class='cLeft'>Delivery<span id='km'></span></div><div>Rp<span id='price'>0</span></div></div>");
-	priceSummary.append("<div id='totalPrice' class='twoColumn'><div class='cLeft'>Total price</div><div>Rp<span>0</span></div></div>");
-	priceSummary.append("<div id='deductionGoPay' class='twoColumn'><div class='cLeft'>GO-PAY</div><div>- Rp<span>0</span></div></div>");
-	priceSummary.append("<div id='deductionCash' class='twoColumn'><div class='cLeft'>Cash</div><div>- Rp<span>0</span></div></div>");
-	var payWith = $("<div class='settingsBox'>Pay with: <label><input type='radio' name='useGoPay' value='true' checked />GO-PAY (Rp<span class='goPayBalance'>0</span>)</label><label><input type='radio' name='useGoPay' value='false' />Cash</label></div>");
+	priceSummary.append("<div id='foodCost' class='twoColumn'><div class='cGrow'>Cost (est.)</div><div>Rp<span>0</span></div></div>");
+	priceSummary.append("<div id='deliveryPrice' class='twoColumn'><div class='cGrow'>Delivery<span id='km'></span></div><div>Rp<span id='price'>0</span></div></div>");
+	priceSummary.append("<div id='totalPrice' class='twoColumn'><div class='cGrow'>Total price</div><div>Rp<span>0</span></div></div>");
+	priceSummary.append("<div id='deductionGoPay' class='twoColumn'><div class='cGrow'>GO-PAY</div><div>- Rp<span>0</span></div></div>");
+	priceSummary.append("<div id='deductionCash' class='twoColumn'><div class='cGrow'>Cash</div><div>- Rp<span>0</span></div></div>");
+	var payWith = $("<div class='settingsBox'>Pay with: <label><input type='radio' name='goFoodUseGoPay' value='true' checked />GO-PAY (Rp<span class='goPayBalance'>0</span>)</label><label><input type='radio' name='goFoodUseGoPay' value='false' />Cash</label></div>");
 	wrapper.append(payWith);
-	payWith.find("input[name=useGoPay]").on("change", function() {
-		useGoPay = $("input[name=useGoPay]:checked", payWith).val() == "true";
+	payWith.find("input[name=goFoodUseGoPay]").on("change", function() {
+		goFoodUseGoPay = $("input[name=goFoodUseGoPay]:checked", payWith).val() == "true";
 		updatePrices();
 	});
 	wrapper.append("<div class='textSeparator'>Delivery address</div>");
@@ -469,20 +508,20 @@ function showOrder() {
 	initGoFoodOrderMap();
 	wrapper.append("<div class='settingsBox'><div><input type='text' id='destName' placeholder='Address (click on map first)' disabled style='width: 100%;' /></div><div><input type='text' id='destNote' placeholder='Notes' disabled style='width: 100%;' /></div></div>");
 	$("#destName").on("input", function() {
-		selectedDest.name = this.value;
+		goFoodSelectedDest.name = this.value;
 	});
 	$("#destNote").on("input", function() {
-		selectedDest.note = this.value;
+		goFoodSelectedDest.note = this.value;
 	});
 	wrapper.append("<div class='textSeparator'>History (select one to set as destination)</div>");
 	var historyList = $("<div class='historyList'></div>");
 	wrapper.append(historyList);
 	wrapper.append("<div class='textSeparator'></div>");
-	wrapper.append($("<div class='settingsBox clickable orderButton'><div>ORDER</div></div>").click(function() {
+	wrapper.append($("<button class='orderButton'>ORDER</button>").click(function() {
 		if (currentFoodCart.length < 1) {
 			alert("No items in cart");
 			return;
-		} else if ($.isEmptyObject(selectedDest)) {
+		} else if ($.isEmptyObject(goFoodSelectedDest)) {
 			alert("Destination not yet selected");
 			return;
 		}
@@ -498,7 +537,7 @@ function showOrder() {
 			var item = data[i];
 			historyList.append(createHistoryEntry(item, (function(_historyItem) {
 				return function() {
-					selectedDest = {
+					goFoodSelectedDest = {
 						name: _historyItem.name,
 						latLong: _historyItem.latLong,
 						note: _historyItem.note,
@@ -537,24 +576,24 @@ function updatePrices() {
 	$("#deliveryPrice #km").text(" (" + foodPriceResponse.totalDistance + " km)");
 	var deliveryPrice = 0;
 
-	if (useGoPay && foodPriceResponse.totalCredit > 0) {
+	if (goFoodUseGoPay && foodPriceResponse.totalCredit > 0) {
 		deliveryPrice = foodPriceResponse.goPayPrice.goPayTotalPrice;
 	} else {
 		deliveryPrice = foodPriceResponse.subTotal;
 	}
 
 	$("#deliveryPrice #price").text(deliveryPrice.formatMoney(0));
-	$("#totalPrice span").text((useGoPay ? foodPriceResponse.goPayPrice.gopay_grand_total : foodPriceResponse.totalPrice).formatMoney(0));
+	$("#totalPrice span").text((goFoodUseGoPay ? foodPriceResponse.goPayPrice.gopay_grand_total : foodPriceResponse.totalPrice).formatMoney(0));
 	var deductionGoPay = $("#deductionGoPay");
 
-	if (useGoPay) {
+	if (goFoodUseGoPay) {
 		deductionGoPay.show();
 		$("#deductionGoPay span").text(foodPriceResponse.totalCredit.formatMoney(0));
 	} else {
 		deductionGoPay.hide();
 	}
 
-	$("#deductionCash span").text((useGoPay ? foodPriceResponse.totalCash : foodPriceResponse.cashPrice).formatMoney(0));
+	$("#deductionCash span").text((goFoodUseGoPay ? foodPriceResponse.totalCash : foodPriceResponse.cashPrice).formatMoney(0));
 }
 
 function updateMap() {
@@ -564,23 +603,23 @@ function updateMap() {
 
 	markers = [];
 	markers.push(createMarker(0, commaSeparatedLatLng(currentResto.restaurant.location), "Origin: " + currentResto.restaurant.name + ", " + currentResto.restaurant.address));
-	destSelected = !$.isEmptyObject(selectedDest);
+	goFoodDestSelected = !$.isEmptyObject(goFoodSelectedDest);
 
-	if (destSelected) {
-		markers.push(createMarker(1, commaSeparatedLatLng(selectedDest.latLong), "Destination: " + selectedDest.address));
+	if (goFoodDestSelected) {
+		markers.push(createMarker(1, commaSeparatedLatLng(goFoodSelectedDest.latLong), "Destination: " + goFoodSelectedDest.address));
 	}
 
 	for (var i in markers) {
 		markers[i].setMap(map);
 	}
 
-	if (!destSelected)
+	if (!goFoodDestSelected)
 		return;
 
-	$("#destName").removeAttr("disabled").val(selectedDest.name);
+	$("#destName").removeAttr("disabled").val(goFoodSelectedDest.name);
 	var destNote = $("#destNote")[0];
 	destNote.disabled = false;
-	destNote.value = selectedDest.note;
+	destNote.value = goFoodSelectedDest.note;
 	calculatePrices();
 }
 
@@ -623,15 +662,15 @@ function makeBooking_goFood() {
 		"deviceToken": "",
 		"gcmKey": "",
 		"optionReturn": 0, // always 0
-		"paymentType": useGoPay ? 4 : 0,
+		"paymentType": goFoodUseGoPay ? 4 : 0,
 		"routes": [{
 			"checkpartner": true,
-			"destinationAddress": selectedDest.address,
-			"destinationLatLong": selectedDest.latLong,
-			"destinationName": selectedDest.name,
-			"destinationNote": selectedDest.note,
+			"destinationAddress": goFoodSelectedDest.address,
+			"destinationLatLong": goFoodSelectedDest.latLong,
+			"destinationName": goFoodSelectedDest.name,
+			"destinationNote": goFoodSelectedDest.note,
 			"detailsAddress": currentResto.restaurant.detail_address,
-			"estimatedPrice": foodEst,
+			"estimatedPrice": goFoodEstimatedCartPrice,
 			"item": "",
 			"merchantId": currentResto.restaurant.merchant_id,
 			"originAddress": currentResto.restaurant.address,
@@ -673,7 +712,7 @@ function makeBooking_goRide() {
 		"deviceToken": "",
 		"gcmKey": "",
 		"optionReturn": 0,
-		"paymentType": useGoPay ? 4 : 0,
+		"paymentType": goRideUseGoPay ? 4 : 0,
 		"routes": [{
 			"checkpartner": false,
 			"destinationAddress": goRideTo.address,
@@ -713,28 +752,31 @@ var bookingOriginMarker;
 var bookingDestinationMarker;
 var bookingFirstRequest;
 
-function showBooking(id) {
+function showBooking(id, previewData) {
 	bookingId = id;
-	var container = $("<div class='container' data-id='" + currentContainerId + "' data-name='viewBooking'></div>");
+	var container = $("<div class='container bookingContainer' data-id='" + currentContainerId + "' data-name='viewBooking'></div>");
 	$(".siteWrapper").append(container);
-	var wrapper = $("<div class='wrapper'></div>");
-	container.append(wrapper);
-	wrapper.append("<button onclick='closeBooking();'>< Back</button>")
-		.append("<h1>Order No. " + bookingId + "</h1>")
-		.append("<div class='settingsBox twoColumn' id='bookingFrom'><div>From</div><div class='cLeft'><div class='name'></div><div class='note'></div></div></div>")
-		.append("<div class='settingsBox twoColumn' id='bookingTo'><div>To</div><div class='cLeft'><div class='name'></div><div class='note'></div></div></div>")
-		.append("<div id='bookingMap' style='height: 400px;'></div>")
-		.append("<div class='settingsBox'><div id='driverInfo'></div><div id='bookingStatusText'></div></div>")
-		.append($("<div class='textSeparator' id='bookingFoodItemsTitle'>Food items</div>").hide())
-		.append($("<div id='bookingFoodItems'></div>").hide())
-		.append($("<button id='instantRate'>Rate 5 stars</button>").hide().click(function() {
-			rateBookingGoFood(currentBookingData.orderNo, 5, "", function(data) {
-				if (data.statusMessage == "OK") {
-					alert("You rated this order 5 stars");
-				}
-			});
-		}))
-		.append("<button id='bookingCancel'>Cancel...</button>");
+	var addresses = $("<div class='card'></div>");
+	container.append("<div id='bookingMap'></div>")
+		.append($("<div class='actionBar twoColumn'></div>")
+			.append("<div><span><button onclick='closeBooking();'>< Back</button></span></div>")
+			.append("<div><span class='title'>" + getNameOfServiceByInt(previewData.serviceType) + "</span></div>")
+			.append("<div><span></span></div>"))
+		.append(addresses);
+	addresses.append("<div class='settingsBox twoColumn' id='bookingFrom'><div class='cRight'></div><div class='cGrow'><div class='name'></div><div class='note'></div></div></div>")
+		.append("<div class='settingsBox twoColumn' id='bookingTo'><div class='cRight'></div><div class='cGrow'><div class='name'></div><div class='note'></div></div></div>");
+	container.append($("<div class='card bookingStatusCard'></div>").append("<div class='settingsBox'><div id='driverInfo'></div><div>Order No. " + bookingId + "</div><div id='bookingStatusText'></div></div>")
+			.append($("<div class='textSeparator' id='bookingFoodItemsTitle'>Food items</div>").hide())
+			.append($("<div id='bookingFoodItems'></div>").hide())
+			.append($("<div class='actions'></div>").append($("<button id='instantRate'>Rate 5 stars</button>").hide().click(function() {
+				rateBookingGoFood(currentBookingData.orderNo, 5, "", function(data) {
+					if (data.statusMessage == "OK") {
+						alert("You rated this order 5 stars");
+					}
+				});
+			})).append($("<button id='bookingCancel'>Cancel...</button>").click(function() {
+				showContainer("bookingCancel");
+			})).append($("<button id='needHelp' disabled>Need help? (not implemented)</button>"))));
 	bookingFirstRequest = true;
 	bookingInterval = setInterval(reqDataUpdateBooking, 7500);
 	reqDataUpdateBooking();
@@ -759,18 +801,17 @@ function updateBookingContents() {
 	// TODO: MAKE IT LIKE IN THE REAL GOJEK APP
 	var address = currentBookingData.addresses[0];
 	var driverFound = currentBookingData.driverId != null;
-	var driverInfo = driverFound ? [currentBookingData.driverName, formatPhoneNumber(currentBookingData.driverPhone), formatLicensePlate(currentBookingData.noPolisi)].join(", ") : "";
+	var bookingComplete = isGoJekCompleteBooking(currentBookingData);
+	var driverInfo = driverFound ? [currentBookingData.driverName, formatPhoneNumber(currentBookingData.driverPhone, true), formatLicensePlate(currentBookingData.noPolisi)].join(", ") : "";
 	$("#driverInfo").html(driverInfo);
 	//I NEED TO LOOK AT THE CLIENT ONCE MORE
 	var bookingCancel = $("#bookingCancel");
-	setEnabled(bookingCancel.unbind("click").click(function() {
-		showContainer("bookingCancel");
-	}), !isGoJekCompleteBooking(currentBookingData));
+	showHide($("#needHelp"), bookingCancel, bookingComplete);
 
 	$("#bookingStatusText").text(getStatusMessageAndControlCancelButton(currentBookingData, bookingCancel));
 	var instantRate = $("#instantRate");
 
-	if (isGoJekCompleteBooking(currentBookingData) && currentBookingData.serviceType == 5 && currentBookingData.rate == null && !isCanceled(currentBookingData)) {
+	if (bookingComplete && currentBookingData.serviceType == 5 && currentBookingData.rate == null && !isCanceled(currentBookingData)) {
 		instantRate.show();
 	} else {
 		instantRate.hide();
@@ -802,6 +843,7 @@ function updateBookingContents() {
 	bookingDestinationMarker.setMap(bookingMap);
 
 	if (bookingFirstRequest) {
+		bookingMap.panTo(commaSeparatedLatLng(currentBookingData.addresses[0].latLongOrigin));
 		var bookingFrom = $("#bookingFrom");
 		var bookingTo = $("#bookingTo");
 		$(".name", bookingFrom).text(address.originName);
@@ -816,7 +858,7 @@ function updateBookingContents() {
 
 			for (var i in routeItems) {
 				var item = routeItems[i];
-				var theRow = $("<div class='settingsBox'><div class='twoColumn'><div class='cLeft'><div>" + item.itemName + "</div><div>" + (item.itemDescription == null ? "" : item.itemDescription) + "</div></div><div class='cRight'>Rp" + item.price.formatMoney(0) + "</div></div><div class='twoColumn'><div class='cLeft'>" + item.notes + "</div><div class='cRight'>x" + item.quantity + "</div></div></div>");
+				var theRow = $("<div class='settingsBox'><div class='twoColumn'><div class='cGrow'><div>" + item.itemName + "</div><div>" + (item.itemDescription == null ? "" : item.itemDescription) + "</div></div><div class='cRight'>Rp" + item.price.formatMoney(0) + "</div></div><div class='twoColumn'><div class='cGrow'>" + item.notes + "</div><div class='cRight'>x" + item.quantity + "</div></div></div>");
 				bookingFoodItems.append(theRow);
 			}
 		}
@@ -838,7 +880,7 @@ function updateBookingContents() {
 function rateBookingGoFood(orderNo, stars, feedback, callback) {
 	requestData("/gojek/v2/booking/rate", {}, callback, true, {
 		activitySource: 2,
-		feedback: feedback == null ? "" : feedback,
+		feedback: feedback || "",
 		isHelmetAndJacket: false,
 		isMaskerAndHairCover: false,
 		orderNo: orderNo,
@@ -862,7 +904,7 @@ function getStatusMessageAndControlCancelButton(paramBooking, cancelButton) {
 	}
 
 	if (!isZeroOrNull(paramBooking.cancelReasonId)) {
-		return "Canceled by " + paramBooking.cancelBy + ": " + paramBooking.cancelDescription;
+		return "Canceled" + (paramBooking.cancelBy != null ? " by " + paramBooking.cancelBy : "") + ": " + paramBooking.cancelDescription;
 	}
 
 	if (isGoJekCompleteBooking(paramBooking)) {
@@ -992,7 +1034,7 @@ function constructBookingEntry(paramBooking) {
 			return;
 		}
 
-		showBooking(paramBooking.orderNo);
+		showBooking(paramBooking.orderNo, paramBooking);
 	});
 	box.append("<div>#" + paramBooking.orderNo + ", " + getNameOfServiceByInt(paramBooking.serviceType).toUpperCase() + ", " + formatDate(new Date(paramBooking.timeField)) + "</div>");
 
@@ -1032,13 +1074,14 @@ function showContainer(name) {
 	return ret;
 }
 var selectedCancel;
+var goFoodBannerIndex = 0;
 
 function initContainer(name, elm) {
 	switch (name) {
 		case "home":
 			updateGoPayBalance();
 			updateGoPointsBalance(function(data) {
-				$(".goPointsBalance", elm).text(data.points_balance + " point" + plural(data.points_balance) + ", " + data.tokens_balance + " token" + plural(data.tokens_balance));
+				$(".goPointsBalance", elm).text(data.points_balance + " pt" + plural(data.points_balance) + ", " + data.tokens_balance + " token" + plural(data.tokens_balance));
 			});
 			requestData(Booking.HISTORY_FULL + theCustomer.id, {}, function(data) {
 				var inProgressBookings = [];
@@ -1055,7 +1098,7 @@ function initContainer(name, elm) {
 				}
 
 				var historyAppendable = $("#historyAppendable", elm).empty();
-				
+
 				if (inProgressBookings.length > 0) {
 					historyAppendable.html("<span class='redCircle'>" + inProgressBookings.length + "</span>");
 				}
@@ -1107,12 +1150,45 @@ function initContainer(name, elm) {
 			initGoRide(elm);
 			break;
 		case "goFood":
+			var banners = $("#goFoodBanner", elm).empty();
 			var shortcuts = $("#shortcuts", elm).empty();
 			var cuisines = $("#cuisines", elm).empty();
 
 			requestData(GoFood.HOME_NEW, {
 				location: makeLocation()
 			}, function(data) {
+				for (var i in data.banners) {
+					var banner = data.banners[i];
+					var bannerImage = $("<div class='bannerImage' style='background-image: url(" + banner.image + ");'></div>");
+					if (banner.banner_type == "CATEGORY") {
+						bannerImage.addClass("clickable");
+						bannerImage.click((function(banner) {
+							return function() {
+								showSearch(banner.category_code, banner.category_name);
+							}
+						})(banner));
+					} else if (banner.banner_type == "WEB") {
+						if (banner.url == "gojek://gofood/reorder") {
+							bannerImage.addClass("clickable");
+							bannerImage.click((function(banner) {
+								return function() {
+									showContainer("goFoodOrders");
+								}
+							})(banner));
+						}
+					}
+					banners.append(bannerImage);
+				}
+				// $(".bannerImage:not(:first-child)", banners).hide();
+				goFoodBannerIndex = 0;
+				banners.append($("<div class='bannerControl'></div>").append($("<button><-</button>").click(function() {
+					goFoodBannerIndex = mod(goFoodBannerIndex - 1, data.banners.length);
+					updateGoFoodBanner();
+				})).append("<div class='bannerIndicator'></div>").append($("<button>-></button>").click(function() {
+					goFoodBannerIndex = mod(goFoodBannerIndex + 1, data.banners.length);
+					updateGoFoodBanner();
+				})));
+				updateGoFoodBanner();
 				for (var i in data.shortcuts) {
 					var shortcut = data.shortcuts[i];
 					shortcuts.append($("<div class='card cardContent'><img src='" + shortcut.icon.url + "' height='128px' /><div>" + shortcut.name + "</div></div>").click((function(shortcut) {
@@ -1131,22 +1207,51 @@ function initContainer(name, elm) {
 				}
 			});
 			break;
+		case "goFoodOrders":
+			var orderList = $("#goFoodOrderList").empty();
+			// TODO: page
+			xRequestData("/myresto/consumer/v1/orders/completed", {limit: 10, page: 1}, function(data) {
+				if (data != null) {
+					for (var i in data.data) {
+						orderList.append(constructCompletedOrderCard(data.data[i]));
+					}
+				}
+			});
+			break;
 		case "bookingCancel":
 			selectedCancel = null;
 			var cancelConfirm = $("#cancelConfirm", elm).unbind("click").click(function() {
 				var theThis = this;
 				this.disabled = true;
-				xRequestData("/gojek/v2/booking/cancelBookingCustomer", {}, function(data) {
-					theThis.disabled = false;
+				xRequestData("/gojek/v2/booking/cancelBooking", {}, function(data) {
 					if (data != null) {
-						alert(data.message);
-						showContainer("viewBooking");
+						if (data.statusCode == 200) {
+							xRequestData("/gojek/v2/booking/cancelBookingCustomer", {}, function(data) {
+								theThis.disabled = false;
+								if (data != null) {
+									if (data.statusCode == 200) {
+										alert(data.message);
+										showContainer("viewBooking");
+									} else {
+										alert("Cannot cancel order: ", data.message);
+									}
+								}
+							}, "PUT", {
+								activitySource: 2,
+								bookingId: currentBookingData.id,
+								cancelDescription: selectedCancel.desc,
+								cancelReasonId: selectedCancel.id,
+								orderNo: currentBookingData.orderNo
+							});
+						} else {
+							alert("Cannot cancel order: ", data.message);
+						}
 					}
 				}, "PUT", {
 					activitySource: 2,
 					bookingId: currentBookingData.id,
-					cancelDescription: selectedCancel.desc,
-					cancelReasonId: selectedCancel.id,
+					cancelDescription: "Cancelled by customer apps",
+					cancelReasonId: 56,
 					orderNo: currentBookingData.orderNo
 				});
 			});
@@ -1179,11 +1284,76 @@ function initContainer(name, elm) {
 	}
 }
 
+function constructCompletedOrderCard(completedOrder) {
+	var orderButton;
+	var ret = $("<div class='card reorderCard'></div>")
+		.append($("<div class='cardContent twoColumn'></div>")
+			.append($("<div class='imagePreview'></div>").css("background-image", "url('" + completedOrder.merchant.image + "')"))
+			.append($("<div class='cGrow'></div>")
+				.append("<div class='primary'>" + completedOrder.merchant.name + "</div>")
+				.append("<div class='secondary'>" + completedOrder.merchant.address + "</div>")))
+		.append($("<div class='cardContent cardBottom twoColumn'></div>")
+			.append("<div class='cGrow'>This costs Rp" + completedOrder.paid.formatMoney(0) + "</div>")
+			.append(orderButton = $("<button class='orderButton' style='width: initial;'>Reorder</button>")
+				.click(function() {
+					var merchant = completedOrder.merchant;
+					currentResto = {
+						restaurant: {
+							name: merchant.name,
+							address: merchant.address,
+							location: merchant.location,
+							detail_address: merchant.address,
+							merchant_id: merchant.id
+						}
+					};
+					currentFoodCart = [];
+
+					for (var i in completedOrder.items) {
+						var item = completedOrder.items[i];
+
+						// TODO work with manually added items
+						if (item.manual) {
+							continue;
+						}
+
+						currentFoodCart.push({
+							itemDescription: item.menu_item_description,
+							itemId: item.id,
+							itemName: item.menu_item_name,
+							notes: item.note,
+							price: item.price,
+							quantity: item.quantity
+						});
+					}
+
+					showGoFoodOrderConfirmation();
+				})
+			)
+		);
+
+
+	for (var i in completedOrder.items) {
+		if (!completedOrder.items[i].active) {
+			setEnabled(orderButton, false);
+			break;
+		}
+	}
+
+	return ret;
+}
+
+function updateGoFoodBanner() {
+	var banner = $("#goFoodBanner");
+	var bannerImage = $(".bannerImage", banner).hide();
+	bannerImage.eq(goFoodBannerIndex).show();
+	$(".bannerIndicator", banner).text((goFoodBannerIndex + 1) + " / " + bannerImage.length);
+}
+
 function setEnabled(jq, bool) {
 	if (bool) {
-		jq.removeAttr("disabled");
+		return jq.removeAttr("disabled");
 	} else {
-		jq.attr("disabled", true);
+		return jq.attr("disabled", true);
 	}
 }
 
@@ -1240,8 +1410,6 @@ function isGoJekCompleteBooking(paramBooking) {
 	return ((paramBooking.statusBooking == 4) || (paramBooking.statusBooking == 0) || (paramBooking.statusBooking == 5) || !isZeroOrNull(paramBooking.cancelReasonId)) && (paramBooking.serviceType != 12) && (paramBooking.serviceType != 7) && (paramBooking.serviceType != 14);
 }
 
-var polyline;
-
 function initGoFoodOrderMap() {
 	var curloc = {
 		lat: currentLocation.coords.latitude,
@@ -1259,7 +1427,7 @@ function initGoFoodOrderMap() {
 		requestData(Booking.REVERSE_GEOCODE, {
 			latLong: stringLatLong
 		}, function(data) {
-			selectedDest = {
+			goFoodSelectedDest = {
 				name: data.name,
 				latLong: stringLatLong,
 				note: "",
@@ -1278,6 +1446,12 @@ function initGoRide(elm) {
 	goRideToMarker = null;
 	goRideFrom = {};
 	goRideTo = {};
+
+	if (goRidePolyline != null) {
+		goRidePolyline.setMap(null);
+		goRidePolyline = null;
+	}
+
 	$("#goRideMap", elm).empty();
 	goRideMap = new google.maps.Map(document.getElementById("goRideMap"), {
 		zoom: 16,
@@ -1335,18 +1509,18 @@ function initGoRide(elm) {
 	});
 	$("#goRideFrom", elm).unbind("mousedown").mousedown(function() {
 		goRideSelectTo = false;
-		updateGoRideOrder(elm);
+		updateGoRideAdressSelection(elm);
 	});
 	$("#goRideTo", elm).unbind("mousedown").mousedown(function() {
 		goRideSelectTo = true;
-		updateGoRideOrder(elm);
+		updateGoRideAdressSelection(elm);
 	});
 	$("#goRideFromName", elm).val("").unbind("input").on("input", function() {
-		updateGoRideOrder(elm);
+		updateGoRideAdressSelection(elm);
 		updateGoRideSuggestion(this.value, false, elm);
 	});
 	$("#goRideToName", elm).val("").unbind("input").on("input", function() {
-		updateGoRideOrder(elm);
+		updateGoRideAdressSelection(elm);
 		updateGoRideSuggestion(this.value, true, elm);
 	});
 	$("#goRideFromNote", elm).val("").unbind("input").on("input", function() {
@@ -1363,7 +1537,7 @@ function initGoRide(elm) {
 			goRideTo.note = this.value;
 		}
 	});
-	$(".orderButton", elm).unbind("click").click(function() {
+	setEnabled($(".orderButton", elm), false).unbind("click").click(function() {
 		if ($.isEmptyObject(goRideFrom) || $.isEmptyObject(goRideTo)) {
 			alert("One of the locations are not yet set.");
 			return;
@@ -1383,12 +1557,13 @@ function initGoRide(elm) {
 				address: data.address
 			}, goRideSelectTo, elm);
 
-			updateGoRideOrder(elm);
+			updateGoRideAdressSelection(elm);
 		});
 	});
+	updateGoRideAdressSelection(elm);
 }
 
-function updateGoRideOrder(elm) {
+function updateGoRideAdressSelection(elm) {
 	var fromBox = $("#goRideFrom", elm);
 	var toBox = $("#goRideTo", elm);
 	var color = "#E0E0E0";
@@ -1429,6 +1604,7 @@ function updateGoRideOrder(elm) {
 }
 
 var debounceLoadSuggestion = _.debounce(function(val, target, isTo, elm) {
+	if (val == "") return;
 	target.html("<div class='settingsBox'>Searching...</div>");
 	requestData("/gojek/poi/v2/findPoi", {
 		name: val
@@ -1458,7 +1634,6 @@ var debounceLoadSuggestion = _.debounce(function(val, target, isTo, elm) {
 
 function updateGoRideSuggestion(val, isTo, elm) {
 	var target = $(isTo ? "#goRideSuggestionTo" : "#goRideSuggestionFrom", elm).empty();
-	if (val == "") return;
 	debounceLoadSuggestion(val, target, isTo, elm);
 }
 
@@ -1487,7 +1662,11 @@ function goRideSet(paramAddress, isDestination, elm) {
 		}
 	}
 
-	updateGoRideOrder();
+	if (!$.isEmptyObject(goRideFrom) && !$.isEmptyObject(goRideTo)) {
+		calculateGoRide($(".orderButton", elm));
+	}
+
+	updateGoRideAdressSelection();
 }
 
 function createHistoryEntry(paramAddress, clickCallback) {
@@ -1521,6 +1700,47 @@ function requestData(req, data, callback, post, payload) {
 	$.ajax(options);
 }
 
+var goRidePolyline;
+function calculateGoRide(orderButton) {
+	if (goRidePolyline != null) {
+		goRidePolyline.setMap(null);
+	}
+
+	setEnabled(orderButton, false);
+	xRequestData("/gojek/v2/calculate/gopay", {}, function(data) {
+		if (data != null) {
+			if (data.errors != null && data.errors.length > 0) {
+				alert(data.errors[0].message_title + ": " + data.errors[0].message);
+			} else {
+				if (goRidePolyline == null) {
+					goRidePolyline = new google.maps.Polyline({
+						geodesic: true,
+						strokeColor: "#0000FF",
+						strokeWeight: POLYLINE_WEIGHT
+					});
+				}
+
+				goRidePolyline.setPath(google.maps.geometry.encoding.decodePath(data.routes[0].routePolyline));
+				goRidePolyline.setMap(goRideMap);
+				setEnabled(orderButton, true);
+			}
+		}
+	}, "POST", {
+		"paymentType": goRideUseGoPay ? "4" : "0",
+		"routeRequests": [{
+			"destinationLatLong": goRideTo.latLong,
+			"serviceType": 1,
+			"originLatLong": goRideFrom.latLong
+		}],
+		"marketplaceType": "",
+		"corporateId": "",
+		"serviceType": 1,
+		"customerId": theCustomer.id,
+		"region": "",
+		"vehicle_type": "bike"
+	});
+}
+
 function xRequestData(req, queries, callback, method, payload) {
 	queries = queries || {};
 	callback = callback || $.noop;
@@ -1538,7 +1758,7 @@ function xRequestData(req, queries, callback, method, payload) {
 				response = JSON.parse(xhr.responseText);
 			} catch (e) {
 				response = null;
-				console.log("Response is not in JSON");
+				console.log("Response is not in JSON format");
 			}
 
 			callback(response);
@@ -1571,14 +1791,19 @@ function makeLocation() {
 	return currentLocation.coords.latitude + "," + currentLocation.coords.longitude;
 }
 
-function formatPhoneNumber(paramString) {
+function formatPhoneNumber(paramString, convertTo08) {
 	paramString.replaceAll(" ", "");
+	var zero8 = "08";
+	var plus628 = "+628";
+	var replaceFrom = convertTo08 ? plus628 : zero8;
+	var replaceTo = !convertTo08 ? plus628 : zero8;
 
-	if (paramString.startsWith("08")) {
-		paramString = paramString.replace("08", "+628");
+	if (paramString.startsWith(replaceFrom)) {
+		paramString = paramString.replace(replaceFrom, replaceTo);
 	}
 
-	return [paramString.slice(0, 3), paramString.slice(3, 6), paramString.slice(6, 10), paramString.slice(10, 14)].join("-");
+	var i = 0;
+	return [(convertTo08 ? [paramString.slice(i, i += 4)] : [paramString.slice(i, i += 3), paramString.slice(i, i += 3)]).join("-"), paramString.slice(i, i += 4), paramString.slice(i, i += 4)].join("-");
 }
 
 function formatLicensePlate(paramString) {
@@ -1587,6 +1812,11 @@ function formatLicensePlate(paramString) {
 	var regexNumber = /[0-9]{1,4}/;
 	var regexLetter = /[A-Z]{1,3}$/;
 	return [paramString.match(regexAreaCode)[0], paramString.match(regexNumber)[0], paramString.match(regexLetter)[0]].join(" ");
+}
+
+function mod(a, b) {
+	var r = a % b;
+	return r < 0 ? r + b : r;
 }
 
 Number.prototype.formatMoney = function(c, d, t) {
