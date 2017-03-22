@@ -1,0 +1,598 @@
+@font-face {
+	font-family: "cera";
+	src: url("fonts/CeraPRO-Bold.woff") format("woff");
+	font-weight: 700;
+	font-style: normal;
+}
+
+@font-face {
+	font-family: "cera";
+	src: url("fonts/CeraPRO-Medium.woff") format("woff");
+	font-weight: 500;
+	font-style: normal;
+}
+
+@font-face {
+	font-family: "cera";
+	src: url("fonts/CeraPRO-Regular.woff") format("woff");
+	font-weight: 400;
+	font-style: normal;
+}
+
+@font-face {
+	font-family: "lemonmilk";
+	src: url("fonts/LemonMilk.otf") format("opentype");
+	font-weight: bold;
+	font-style: normal;
+}
+
+:root {
+	--settings-padding-hor: 16px;
+	--settings-padding-ver: 6px;
+	--global-max-width: 640px;
+	--estimated-cost-height: 64px;
+	--primary-color: #3DC057;
+	--accent-color: #90C74A;
+}
+
+* {
+	font-family: "cera";
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	color: #292929;
+}
+
+body, input, button, select, option {
+	font-size: 18px;
+}
+
+h1 {
+	text-align: center;
+	font-family: "lemonmilk";
+	letter-spacing: 2px;
+	text-shadow: #e0e0e0 1px 1px 0px, #e0e0e0 2px 2px 0px, #e0e0e0 3px 3px 0px, #e0e0e0 4px 4px 0px, #e0e0e0 5px 5px 0px, #e0e0e0 6px 6px 0px, #e0e0e0 7px 7px 0px, #e0e0e0 8px 8px 0px, #e0e0e0 9px 9px 0px, #e0e0e0 10px 10px 0px;
+}
+
+.container {
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	overflow: auto;
+	background: url("background.svg") bottom center no-repeat #f1f1f1;
+	background-size: contain;
+}
+
+.wrapper {
+	width: var(--global-max-width) !important;
+	margin: 8px auto;
+}
+
+img {
+	width: 100%;
+}
+
+.loader {
+	background: url("loader.svg");
+	display: inline-block;
+}
+
+.loader.size12 {
+	width: 12px;
+	height: 12px;
+}
+
+.loader.size24 {
+	width: 24px;
+	height: 24px;
+}
+
+.loader.size36 {
+	width: 36px;
+	height: 36px;
+}
+
+.card {
+	width: 100%;
+	background: white;
+	border-radius: 2px;
+	display: flex;
+	flex-direction: column;
+	margin-top: 8px;
+	overflow: hidden;
+}
+
+.card:first-child {
+	margin-top: 0;
+}
+
+.cardBG {
+	height: 200px;
+	background-position: center;
+	background-size: cover;
+}
+
+.cardContent {
+	padding: 20px;
+}
+
+.cardContent .primary {
+	font-weight: bold;
+}
+
+#goFoodSearchList .card, #cuisines .card, #shortcuts .card, .clickable {
+	cursor: pointer;
+}
+
+.textSeparator {
+	background: #f1f1f1;
+	padding: 4px var(--settings-padding-hor);
+	font-weight: bold;
+	color: #757575;
+}
+
+.settingsBox {
+	padding: var(--settings-padding-ver) var(--settings-padding-hor);
+	background-color: white;
+	border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.settingsBox:last-child {
+	border-bottom: initial;
+}
+
+.twoColumn {
+	display: flex;
+	align-items: center;
+}
+
+.twoColumn > .cGrow {
+	flex: 1;
+}
+
+.shadow-1, .card, button, .actionBar {
+	box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+}
+
+.shadow-2 {
+	box-shadow: 0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23);
+}
+
+.shadow-3 {
+	box-shadow: 0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23);
+}
+
+.shadow-4 {
+	box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22);
+}
+
+.shadow-5 {
+	box-shadow: 0 19px 38px rgba(0,0,0,0.30), 0 15px 12px rgba(0,0,0,0.22);
+}
+
+.loginForm {
+	width: 50%;
+	margin: auto;
+}
+
+.loginForm > input:not([type=checkbox]), .loginForm > button, .loginForm > label {
+	width: 100%;
+	margin: 0 auto 20px;
+	display: block;
+}
+
+.loginForm > .loader {
+	margin: 0 auto 20px;
+	display: block;
+}
+
+#destName, #goRideFromName, #goRideToName, #bookingFrom > .cGrow > .name, #bookingTo > .cGrow > .name, #homeCustomerName, .voucherUpper, .voucherTitle {
+	font-weight: bold;
+}
+
+#bookingFrom > .cGrow, #bookingTo > .cGrow {
+	padding-left: 8px;
+}
+
+#bookingFrom > .cRight, #bookingTo > .cRight {
+	flex: 0 0 32px;
+	height: 32px;
+}
+
+#bookingFrom > .cRight {
+	background: url("http://maps.google.com/mapfiles/ms/icons/blue-dot.png");
+}
+
+#bookingTo > .cRight {
+	background: url("http://maps.google.com/mapfiles/ms/icons/orange-dot.png");
+}
+
+#goRideFrom input, #goRideTo input {
+	width: 100%;
+}
+
+.foodItemBottomRow input[type=text] {
+	width: 100%;
+}
+
+.threeColumn {
+	display: flex;
+	flex-flow: row wrap;
+	justify-content: space-between;
+}
+
+.threeColumn > div {
+	width: calc(33.33% - 4px);
+	margin-bottom: 6px;
+	margin-top: 0;
+}
+
+.threeColumn div {
+	text-align: center;
+}
+
+#cuisines .card {
+	color: white;
+	height: 85px;
+	display: table;
+}
+
+#cuisines .card .cardContent {
+	display: table-cell;
+	vertical-align: middle;
+	background: rgba(0, 0, 0, 0.36);
+	text-shadow: 0px 1px 5px black;
+	font-weight: 500;
+}
+
+#shortcuts .cardContent {
+	font-weight: 500;
+}
+
+[data-name=foodMerchantDetails] {
+	display: flex;
+	flex-direction: column;
+	overflow: none;
+}
+
+[data-name=foodMerchantDetails] .scrollingContent {
+	flex: 1;
+	overflow: auto;
+}
+
+.estimatedCost {
+	height: var(--estimated-cost-height);
+	background: #ffcdd2;
+}
+
+.estimatedCost > div {
+	width: var(--global-max-width);
+	margin: 0 auto;
+	padding: 8px var(--settings-padding-hor);
+}
+
+.orderButton {
+	background: var(--primary-color);
+	color: white;
+	width: 100%;
+}
+
+button {
+	height: 36px;
+	padding: 0 8px;
+	background: #e0e0e0;
+	border-radius: 0;
+	transition: all .3s cubic-bezier(.25, .8, .25, 1);
+	border: 0;
+	/*margin-bottom: 6px;*/
+}
+
+button:disabled {
+	opacity: 0.5;
+	box-shadow: none;
+}
+
+button.colored {
+	background: var(--primary-color);
+	color: white;
+}
+
+/*button.flat.colored {
+	color: var(--accent-color);
+}*/
+
+.flat {
+	background: none;
+	box-shadow: none;
+	color: var(--accent-color);
+}
+
+button, .tab {
+	text-transform: uppercase;
+	font-weight: 500;
+}
+
+.tab {
+	flex: 1;
+	text-align: center;
+	height: 48px;
+	line-height: 40px;
+	cursor: pointer;
+	padding: 0 16px;
+}
+
+.tab.active {
+	color: var(--accent-color);
+}
+
+.tabContainer {
+	display: flex;
+	margin-bottom: 8px;
+	position: relative;
+}
+
+.tabContainer.scrolling {
+	overflow-x: auto;
+	display: inline-block;
+	width: 100%;
+	white-space: nowrap;
+}
+
+.scrolling .tab {
+	display: inline-block;
+	flex: initial;
+}
+
+.tabIndicator {
+	position: absolute;
+	height: 4px;
+	background: var(--accent-color);
+	bottom: 0;
+	pointer-events: none;
+}
+
+.clickable, .tab {
+	user-select: none;
+}
+
+span.redCircle {
+	background: #B71C1C;
+	font-size: 14px;
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	display: inline-block;
+	line-height: 20px;
+	margin-left: 8px;
+	color: white;
+}
+
+.actions {
+	display: flex;
+}
+
+.actions button {
+	flex: 1;
+}
+
+#goFoodBanner > .bannerImage {
+	height: 330px;
+	background-size: cover;
+}
+
+.bannerControl {
+	margin: 8px 0;
+	text-align: center;
+}
+
+.bannerIndicator {
+	display: inline-block;
+	margin: 0 8px;
+}
+
+.reorderCard .imagePreview {
+	width: 136px;
+	height: 136px;
+	background-size: cover;
+	background-position: center;
+	margin-right: 20px;
+}
+
+.cardBottom {
+	background: #fafafa;
+}
+
+.bookingContainer {
+	display: flex;
+	flex-direction: column;
+}
+
+.bookingContainer #bookingMap {
+	width: 100%;
+	height: 100%;
+	position: absolute;
+	top: 0;
+	left: 0;
+}
+
+.bookingContainer > * {
+	position: relative;
+}
+
+.bookingContainer > *:not(.actionBar):not(#bookingMap) {
+	/*align-self: center;*/
+	width: var(--global-max-width);
+	margin: 8px auto;
+}
+
+.contentInner {
+	flex: 1;
+	pointer-events: none;
+}
+
+.contentInnerAgain {
+	pointer-events: none;
+}
+
+.contentInner > *:not(.contentInnerAgain), .contentInnerAgain > * {
+	pointer-events: auto;
+}
+
+.contentInnerAgain {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	display: flex;
+	align-items: flex-end;
+}
+
+.bookingStatusCard {
+	max-height: 100%;
+}
+
+.bookingStatusCard .moreDetails.shown {
+	border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.bookingStatusCard .cardContent {
+	border: 0;
+}
+
+.actionBar {
+	background: rgba(245, 245, 245, 0.8);
+	padding: 8px;
+}
+
+.actionBar .title {
+	font-family: lemonmilk;
+	text-align: center;
+	flex: 1;
+	font-size: 28px;
+}
+
+.actionBar > * {
+	flex: 1;
+	display: flex;
+	justify-content: center;
+}
+.actionBar > *:first-child > span { margin-right: auto; }
+.actionBar > *:last-child > span { margin-left: auto; }
+
+.goFoodSearchLoader, .loadMore {
+	margin: 16px auto 0;
+	display: block;
+}
+
+.serviceList {
+	margin-top: 8px;
+}
+
+.cuisinesHeader {
+	background: none;
+	text-align: center;
+}
+
+.disclaimer {
+	text-align: center;
+}
+
+.voucherTitle {
+	font-size: 20px;
+}
+
+#driverPhoto {
+	width: 64px;
+	height: 64px;
+	border-radius: 32px;
+	background-color: #e0e0e0;
+	margin-right: 16px;
+	background-size: cover;
+}
+
+.goPointsBalanceBox {
+	text-align: center;
+}
+
+.goPointsBalanceBox .pts {
+	display: inline-block;
+	vertical-align: top;
+}
+
+.goPointsBalanceBox .goPointsBalance {
+	display: inline-block;
+	font-size: 36px;
+	margin-right: 6px;
+	margin-top: -4px;
+}
+
+#loginError {
+	margin-bottom: 20px;
+	color: red;
+	text-align: center;
+}
+
+.voucherMerchant {
+	text-transform: uppercase;
+}
+
+.voucherSubtitle {
+	color: #818181;
+}
+
+.pointsBalanceTitle {
+	font-size: 16px;
+	font-weight: 500;
+}
+
+.pointsPlay .loader {
+	margin-right: 8px;
+}
+
+.pointsPlay .pointsText {
+	font-weight: 500;
+	color: #4A4A4A;
+}
+
+.listEmpty {
+	font-size: 20px;
+	text-align: center;
+	margin-top: 16px;
+}
+
+.reorderCard {
+	color: #333;
+}
+
+.reorderCard .secondary {
+	color: #777;
+}
+
+.reorderCard .primary {
+	font-size: 20px;
+}
+
+.closedOverlay {
+	position: absolute;
+	width: 136px;
+	height: 136px;
+	text-align: center;
+	background: rgba(0, 0, 0, 0.5);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.closedOverlay > div {
+	background: #D2142B;
+	text-transform: uppercase;
+	display: inline-block;
+	color: white;
+	font-size: 14px;
+	font-weight: 500;
+	padding: 4px 6px;
+	border-radius: 2px;
+}

@@ -1,13 +1,13 @@
-var Profile = {
+Profile = {
 	LOGIN: "/gojek/v2/login"
 }
-var GoFood = {
+GoFood = {
 	GET_CATEGORIES: "/gojek/shopping-category/find",
 	SEARCH_MERCHANTS: "/gojek/merchant/find",
 	VIEW_NEW_MERCHANT_DETAILS_UUID: "/gofood/consumer/v2/restaurants/",
 	HOME_NEW: "/gofood/consumer/v2/home"
 }
-var Booking = {
+Booking = {
 	HISTORY: "/gojek/v2/customer/v2/history/",
 	HISTORY_FULL: "/gojek/v2/booking/history/",
 	CALCULATE: "/gojek/v2/calculate/gopay/",
@@ -15,22 +15,27 @@ var Booking = {
 	GET_BY_NO: "/gojek/v2/booking/findByOrderNo/",
 	REVERSE_GEOCODE: "/gojek/poi/reverse-geocode"
 }
-var GoPay = {
+GoPay = {
 	GET_BALANCE: "/gojek/v2/customer/currentBalance/"
 }
-var GoPoints = {
+GoPoints = {
 	GET_BALANCE: "/gopoints/v1/wallet/points-balance",
 	NEXT_TOKEN: "/gopoints/v1/next-points-token",
 	REDEEM_TOKEN: "/gopoints/v1/redeem-points-token"
 }
+Cookies = {
+	EMAIL: "EMAIL",
+	REFRESH_TOKEN: "REFRESHTOKEN"
+}
 var POLYLINE_WEIGHT = 3;
 var DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-var FAKE_APPVER = "2.17.2";
+var FAKE_APPVER = "2.17.3";
 var FAKE_UNIQUE_ID = "0123456789abcdef"; //"788f6110c67f8070";
 var FAKE_IMEI = "305825702132830";
+var BASE_URL = "https://api.gojekapi.com";
 var currentLocation;
 var accessToken = "";
-var refreshToken;
+// var refreshToken;
 var theCustomer;
 var currentContainerId = 0;
 var currentResto;
@@ -60,30 +65,37 @@ function createLoginRequest(email, password) {
 	};
 }
 
-// function createLoginRequestRefreshToken(email, refreshToken) {
-// 	return {
-// 		username: email,
-// 		client_id: "trusted-client",
-// 		grant_type: "refresh_token",
-// 		refresh_token: refreshToken
-// 	};
-// }
+function createLoginRequestRefreshToken(email, refreshToken) {
+	return {
+		username: email,
+		client_id: "trusted-client",
+		grant_type: "refresh_token",
+		refresh_token: refreshToken
+	};
+}
 
 function loginSubmit() {
+	doLogin(createLoginRequest($("#email").val(), $("#password").val()));
+}
+
+function doLogin(payload) {
 	var submitButton = $("#submit");
 	var loader = $(".loginForm .loader");
-	showHide(submitButton, loader, false);
-	var kvpairs = createLoginRequest($("#email")[0].value, $("#password")[0].value);
+	var inputs = setEnabled($(".loginForm input"), false);
+	var loginError = $("#loginError").hide();
+	showHide(setEnabled(submitButton, false), loader, false);
 	$.ajax({
-		url: "https://api.gojekapi.com" + Profile.LOGIN,
+		url: BASE_URL + Profile.LOGIN,
 		type: "POST",
-		data: JSON.stringify(kvpairs),
+		data: JSON.stringify(payload),
 		beforeSend: function(xhr) {
 			xhr.setRequestHeader("Content-Type", "application/json; charset=UTF-8");
 			xhr.setRequestHeader("X-AppVersion", FAKE_APPVER);
 			xhr.setRequestHeader("X-UniqueId", FAKE_UNIQUE_ID);
 		},
 		complete: function(xhr, statusText, errorThrown) {
+			showHide(setEnabled(submitButton, true), loader, true);
+			setEnabled(inputs, true);
 			var response;
 
 			try {
@@ -97,20 +109,52 @@ function loginSubmit() {
 
 			if (response.status == "OK") {
 				accessToken = response.access_token;
-				refreshToken = response.refresh_token;
 				theCustomer = response.customer;
+
+				if ($("[name=autoSignIn]")[0].checked) {
+					setCookie(Cookies.EMAIL, theCustomer.email);
+					setCookie(Cookies.REFRESH_TOKEN, response.refresh_token)
+				} else {
+					clearEmailRefreshToken();
+				}
+
 				$("#homeCustomerName").text(theCustomer.name);
 				$("#homeCustomerEmail").text(theCustomer.email);
 				$("#homeCustomerPhone").text(formatPhoneNumber(theCustomer.phone));
-				showHide(submitButton, loader, true);
 				showContainer("home");
 				$(".tab:first-child", $("[data-tabcontainername=HOME]")).click();
 			} else {
-				alert(response.message);
-				showHide(submitButton, loader, true);
+				clearEmailRefreshToken();
+				loginError.show().html(response.message || ("<b>" + response.errors[0].message_title + ":</b> " + response.errors[0].message));
 			}
 		}
 	});
+	// xRequestData(Profile.LOGIN, {}, function(response) {
+	// 	response = response || {
+	// 		status: "FAILED",
+	// 		message: "Check your Internet connection"
+	// 	};
+
+	// 	if (response.status == "OK") {
+	// 		accessToken = response.access_token;
+	// 		refreshToken = response.refresh_token;
+	// 		theCustomer = response.customer;
+	// 		$("#homeCustomerName").text(theCustomer.name);
+	// 		$("#homeCustomerEmail").text(theCustomer.email);
+	// 		$("#homeCustomerPhone").text(formatPhoneNumber(theCustomer.phone));
+	// 		showHide(submitButton, loader, true);
+	// 		showContainer("home");
+	// 		$(".tab:first-child", $("[data-tabcontainername=HOME]")).click();
+	// 	} else {
+	// 		alert(response.message);
+	// 		showHide(submitButton, loader, true);
+	// 	}
+	// }, "POST", payload);
+}
+
+function clearEmailRefreshToken() {
+	localStorage.removeItem(Cookies.EMAIL);
+	localStorage.removeItem(Cookies.REFRESH_TOKEN);
 }
 
 function showHide(a, b, bool) {
@@ -186,6 +230,11 @@ $(document).ready(function() {
 	$("#logout").click(logout);
 	$(".loginForm .loader").hide();
 	showContainer("login");
+
+	if (getCookie(Cookies.REFRESH_TOKEN) != null && getCookie(Cookies.EMAIL) != null) {
+		$("[name=autoSignIn]")[0].checked = true;
+		doLogin(createLoginRequestRefreshToken(getCookie(Cookies.EMAIL), getCookie(Cookies.REFRESH_TOKEN)));
+	}
 });
 
 function applyIndicator() {
@@ -222,6 +271,7 @@ function logout() {
 	requestData("/gojek/v2/customer/logout", {}, function(data) {
 		if (data.status == "OK") {
 			showContainer("login");
+			clearEmailRefreshToken();
 		}
 	}, true, {});
 }
@@ -243,7 +293,7 @@ function showSearch(stringCategory, titleOverride) {
 	};
 	var showSearchBox = false;
 	var searchContainer = showContainer("goFoodSearch");
-	searchContainer.find("h1").text(titleOverride == null ? "Search" : titleOverride);
+	searchContainer.find("h1").text(titleOverride || "Search restaurants");
 	var foodSearch = searchContainer.find("#foodSearch");
 	var foodSearchBox = foodSearch.find("#foodSearchQuery").val("");
 
@@ -258,12 +308,18 @@ function showSearch(stringCategory, titleOverride) {
 	$("#goFoodSearchList").empty();
 }
 
-function loadGoFoodSearch(stringCategory) {
-	$("#foodSearchQuerySubmit").attr("disabled", true);
+function loadGoFoodSearch(stringCategory, page) {
+	var list = $("#goFoodSearchList");
+	if (page == null) {
+		list.empty();
+		page = 0;
+	}
+	var submit = $("#foodSearchQuerySubmit").attr("disabled", true);
+	var loader = $(".goFoodSearchLoader").show();
 	var queries = {
-		location: makeLocation() //,
-			// page: 0,
-			// limit: 20
+		location: makeLocation(),
+		page: page,
+		limit: 20
 	};
 
 	if (stringCategory != null) {
@@ -272,7 +328,6 @@ function loadGoFoodSearch(stringCategory) {
 		queries["name"] = $("#foodSearchQuery").val();
 	}
 
-	var list = $("#goFoodSearchList").empty();
 	requestData(GoFood.SEARCH_MERCHANTS, queries, function(data) {
 		for (var i in data) {
 			var foodData = data[i];
@@ -280,7 +335,13 @@ function loadGoFoodSearch(stringCategory) {
 			var bg = foodData.imgLocation == null ? "" : "<div class='cardBG' style='background-image: url(\"" + foodData.imgLocation + "\");'></div>";
 			list.append("<div class='card' onclick='showFoodMerchantScreen(\"" + foodData.uuid + "\");'>" + bg + "<div class='cardContent'><div class='primary'>" + foodData.name + "</div><div class='secondary'>" + foodData.address + "</div><div class='secondary'>" + foodData.distance.toFixed(2) + " km" + (foodData.partner ? " | Free delivery w/ GO-PAY" : "") + "</div></div></div>");
 		}
-		$("#foodSearchQuerySubmit").removeAttr("disabled");
+
+		list.append($("<button class='loadMore'>Load 20 more</button>").click(function() {
+			$(this).remove();
+			loadGoFoodSearch(stringCategory, page + 1);
+		}));
+		submit.removeAttr("disabled");
+		loader.hide();
 	});
 }
 
@@ -497,7 +558,7 @@ function showGoFoodOrderConfirmation() {
 	priceSummary.append("<div id='totalPrice' class='twoColumn'><div class='cGrow'>Total price</div><div>Rp<span>0</span></div></div>");
 	priceSummary.append("<div id='deductionGoPay' class='twoColumn'><div class='cGrow'>GO-PAY</div><div>- Rp<span>0</span></div></div>");
 	priceSummary.append("<div id='deductionCash' class='twoColumn'><div class='cGrow'>Cash</div><div>- Rp<span>0</span></div></div>");
-	var payWith = $("<div class='settingsBox'>Pay with: <label><input type='radio' name='goFoodUseGoPay' value='true' checked />GO-PAY (Rp<span class='goPayBalance'>0</span>)</label><label><input type='radio' name='goFoodUseGoPay' value='false' />Cash</label></div>");
+	var payWith = $("<div class='settingsBox'>Pay with: <label><input type='radio' name='goFoodUseGoPay' value='true' checked />GO-PAY (Rp<span id='goFoodGoPayBalance'>0</span>)</label><label><input type='radio' name='goFoodUseGoPay' value='false' />Cash</label></div>");
 	wrapper.append(payWith);
 	payWith.find("input[name=goFoodUseGoPay]").on("change", function() {
 		goFoodUseGoPay = $("input[name=goFoodUseGoPay]:checked", payWith).val() == "true";
@@ -549,16 +610,28 @@ function showGoFoodOrderConfirmation() {
 			})(item)));
 		}
 	});
-	updateGoPayBalance();
+	updateGoPayBalanceWithCallback(function(data) {
+		$("#goFoodGoPayBalance").text(data.currentBalance.formatMoney(0));
+
+		if (data.currentBalance <= 0) {
+			setEnabled($("input[name=goFoodUseGoPay][value=true]"), false);
+			$("input[name=goFoodUseGoPay][value=false]")[0].checked = true;
+			goFoodUseGoPay = false;
+		}
+	});
 	updateCart();
 	calculatePrices();
 	updateMap();
 }
 
 function updateGoPayBalance() {
-	requestData(GoPay.GET_BALANCE + theCustomer.id, {}, function(data) {
+	updateGoPayBalanceWithCallback(function(data) {
 		$(".goPayBalance").text(data.currentBalance.formatMoney(0));
 	});
+}
+
+function updateGoPayBalanceWithCallback(callback) {
+	requestData(GoPay.GET_BALANCE + theCustomer.id, {}, callback);
 }
 
 function updateGoPointsBalance(callback) {
@@ -683,15 +756,10 @@ function makeBooking_goFood() {
 			"serviceType": 5
 		}]
 	};
-	xRequestData(Booking.MAKE, {}, function(data) {
-		if (data.errorMessage == null) {
-			alert("Your booking has been placed with no. " + data.orderNo + ". Check the booking via the history page.");
-			$("[data-name=foodMerchantDetails], [data-name=foodCart]").remove();
-			showContainer("home");
-		} else {
-			alert("Booking failed:\n" + data.errorMessage);
-		}
-	}, "POST", payload);
+	makeBooking(payload, function() {
+		$("[data-name=foodMerchantDetails], [data-name=foodCart]").remove();
+		showContainer("home");
+	});
 }
 
 function isNullOrEmpty(paramString) {
@@ -735,12 +803,20 @@ function makeBooking_goRide() {
 		}],
 		"vehicle_type": "bike"
 	};
-	requestData(Booking.MAKE, {}, function(data) {
+	makeBooking(payload, function() {
 		showContainer("home");
+	});
+}
 
-		if (data.errorMessage == null)
+function makeBooking(payload, callback) {
+	xRequestData(Booking.MAKE, {}, function(data) {
+		if (data.errorMessage == null) {
 			alert("Your booking has been placed with no. " + data.orderNo + ". Check the booking via the history page.");
-	}, true, payload);
+			callback();
+		} else {
+			alert("Booking failed:\n" + data.errorMessage);
+		}
+	}, "POST", payload);
 }
 
 var bookingId;
@@ -751,24 +827,60 @@ var bookingDriverMarker;
 var bookingOriginMarker;
 var bookingDestinationMarker;
 var bookingFirstRequest;
+var moreDetailsState = false;
 
 function showBooking(id, previewData) {
+	bookingMap = null;
+	bookingOriginMarker = null;
+	bookingDestinationMarker = null;
+	bookingDriverMarker = null;
 	bookingId = id;
 	var container = $("<div class='container bookingContainer' data-id='" + currentContainerId + "' data-name='viewBooking'></div>");
 	$(".siteWrapper").append(container);
 	var addresses = $("<div class='card'></div>");
+	var contentInner = $("<div class='contentInner'></div>");
 	container.append("<div id='bookingMap'></div>")
 		.append($("<div class='actionBar twoColumn'></div>")
 			.append("<div><span><button onclick='closeBooking();'>< Back</button></span></div>")
 			.append("<div><span class='title'>" + getNameOfServiceByInt(previewData.serviceType) + "</span></div>")
 			.append("<div><span></span></div>"))
-		.append(addresses);
-	addresses.append("<div class='settingsBox twoColumn' id='bookingFrom'><div class='cRight'></div><div class='cGrow'><div class='name'></div><div class='note'></div></div></div>")
-		.append("<div class='settingsBox twoColumn' id='bookingTo'><div class='cRight'></div><div class='cGrow'><div class='name'></div><div class='note'></div></div></div>");
-	container.append($("<div class='card bookingStatusCard'></div>").append("<div class='settingsBox'><div id='driverInfo'></div><div>Order No. " + bookingId + "</div><div id='bookingStatusText'></div></div>")
-			.append($("<div class='textSeparator' id='bookingFoodItemsTitle'>Food items</div>").hide())
-			.append($("<div id='bookingFoodItems'></div>").hide())
-			.append($("<div class='actions'></div>").append($("<button id='instantRate'>Rate 5 stars</button>").hide().click(function() {
+		.append(contentInner);
+	contentInner.append(
+		addresses.append("<div class='settingsBox twoColumn' id='bookingFrom'><div class='cRight'></div><div class='cGrow'><div class='name'></div><div class='note'></div></div></div>")
+			.append("<div class='settingsBox twoColumn' id='bookingTo'><div class='cRight'></div><div class='cGrow'><div class='name'></div><div class='note'></div></div></div>"));
+	var moreDetails;
+	moreDetailsState = false;
+	contentInner.append($("<div class='contentInnerAgain'></div>").append($("<div class='card bookingStatusCard'></div>")
+		.append($("<button class='showMoreDetails'>Show details</button>").hide().click(function() {
+			var options = {
+				duration: 375,
+				easing: "easeOutQuint"
+			}
+			if (moreDetailsState = !moreDetailsState) {
+				moreDetails.finish().slideToggle(options);
+				moreDetails.addClass("shown");
+				this.innerHTML = "Hide details";
+			} else {
+				moreDetails.finish().slideToggle(options);
+				moreDetails.removeClass("shown");
+				this.innerHTML = "Show details";
+			}
+		}))
+		.append(moreDetails = $("<div class='moreDetails'></div>").hide()
+			.append($("<div id='bookingItemsWrapper'></div>").hide()
+				.append("<div class='textSeparator'>Order details</div>")
+				.append("<div id='bookingItems'></div>"))
+			.append($("<div id='paymentWrapper'></div>")
+				.append("<div class='textSeparator'>Payment details</div>")
+				.append($("<div></div>")
+					.append($("<div class='settingsBox'></div>")
+						.append("<div class='twoColumn'><div class='cGrow'>Cost</div><div>Rp<span id='bookingCost'></span></div></div>")
+						.append("<div class='twoColumn'><div class='cGrow'>Delivery Fee (<span id='bookingDistance'></span> km)</div><div>Rp<span id='bookingDeliveryFee'></span></div></div>")
+						.append("<div class='twoColumn'><div class='cGrow'>Total Price</div><div>Rp<span id='bookingTotalPrice'></span></div></div>")
+						.append("<div class='twoColumn' id='bookingGoPayPriceContainer'><div class='cGrow'>GO-PAY</div><div>- Rp<span id='bookingGoPayPrice'></span></div></div>")
+						.append("<div class='twoColumn'><div class='cGrow'>Cash</div><div>- Rp<span id='bookingCashPrice'></span></div></div>")))))
+		.append("<div class='settingsBox twoColumn'><div id='driverPhoto'></div><div class='cGrow'><div id='driverInfo'></div><div>Order No. " + bookingId + "</div><div id='bookingStatusText'></div></div></div>")
+		.append($("<div class='actions'></div>").append($("<button id='instantRate'>Rate 5 stars</button>").hide().click(function() {
 				rateBookingGoFood(currentBookingData.orderNo, 5, "", function(data) {
 					if (data.statusMessage == "OK") {
 						alert("You rated this order 5 stars");
@@ -776,11 +888,11 @@ function showBooking(id, previewData) {
 				});
 			})).append($("<button id='bookingCancel'>Cancel...</button>").click(function() {
 				showContainer("bookingCancel");
-			})).append($("<button id='needHelp' disabled>Need help? (not implemented)</button>"))));
+			})).append($("<button id='needHelp' disabled>Need help?</button>")))));
+	initBookingMap();
 	bookingFirstRequest = true;
 	bookingInterval = setInterval(reqDataUpdateBooking, 7500);
 	reqDataUpdateBooking();
-	initBookingMap();
 }
 
 function reqDataUpdateBooking() {
@@ -799,12 +911,28 @@ function closeBooking() {
 
 function updateBookingContents() {
 	// TODO: MAKE IT LIKE IN THE REAL GOJEK APP
+	if (currentBookingData.serviceType == 5) {
+		$("#bookingCost").text((currentBookingData.shoppingActualPriceBeforeDiscount || currentBookingData.estimatedPriceBeforeDiscount).formatMoney(0));
+		$("#bookingDistance").text(currentBookingData.totalDistance.toFixed(2));
+		$("#bookingDeliveryFee").text(currentBookingData.totalPrice.formatMoney(0));
+		$("#bookingTotalPrice").text(currentBookingData.totalPriceWithoutDiscounts.formatMoney(0));
+		// TODO
+		if (currentBookingData.paymentType == 5) {
+			$("#bookingGoPayPriceContainer").show();
+			$("#bookingGoPayPrice").text(currentBookingData.voucherAmountCut.formatMoney(0));
+		} else {
+			$("#bookingGoPayPriceContainer").hide();
+		}
+
+		$("#bookingCashPrice").text((currentBookingData.cashPayable || currentBookingData.totalCustomerPrice).formatMoney(0));
+	}
+
 	var address = currentBookingData.addresses[0];
 	var driverFound = currentBookingData.driverId != null;
 	var bookingComplete = isGoJekCompleteBooking(currentBookingData);
 	var driverInfo = driverFound ? [currentBookingData.driverName, formatPhoneNumber(currentBookingData.driverPhone, true), formatLicensePlate(currentBookingData.noPolisi)].join(", ") : "";
 	$("#driverInfo").html(driverInfo);
-	//I NEED TO LOOK AT THE CLIENT ONCE MORE
+	$("#driverPhoto").css("background-image", "url(" + (driverFound && currentBookingData.driverPhoto != "" ? (currentBookingData.driverPhoto.startsWith("http") ? currentBookingData.driverPhoto : BASE_URL + "/v2/file/img/" + currentBookingData.driverPhoto) : "") + ")");
 	var bookingCancel = $("#bookingCancel");
 	showHide($("#needHelp"), bookingCancel, bookingComplete);
 
@@ -817,33 +945,7 @@ function updateBookingContents() {
 		instantRate.hide();
 	}
 
-	if (bookingPolyline != null) bookingPolyline.setMap(null);
-	if (bookingOriginMarker != null) bookingOriginMarker.setMap(null);
-	if (bookingDestinationMarker != null) bookingDestinationMarker.setMap(null);
-	if (bookingDriverMarker != null) bookingDriverMarker.setMap(null);
-
-	bookingPolyline = new google.maps.Polyline({
-		path: google.maps.geometry.encoding.decodePath(currentBookingData.addresses[0].routePolyline),
-		geodesic: true,
-		strokeColor: "#0000FF",
-		strokeWeight: POLYLINE_WEIGHT
-	});
-	bookingPolyline.setMap(bookingMap);
-	bookingOriginMarker = new google.maps.Marker({
-		position: commaSeparatedLatLng(currentBookingData.addresses[0].latLongOrigin),
-		title: "Your pick up location",
-		icon: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png"
-	});
-	bookingOriginMarker.setMap(bookingMap);
-	bookingDestinationMarker = new google.maps.Marker({
-		position: commaSeparatedLatLng(currentBookingData.addresses[0].latLongDestination),
-		title: "Your destination",
-		icon: "http://maps.google.com/mapfiles/ms/icons/orange-dot.png"
-	});
-	bookingDestinationMarker.setMap(bookingMap);
-
 	if (bookingFirstRequest) {
-		bookingMap.panTo(commaSeparatedLatLng(currentBookingData.addresses[0].latLongOrigin));
 		var bookingFrom = $("#bookingFrom");
 		var bookingTo = $("#bookingTo");
 		$(".name", bookingFrom).text(address.originName);
@@ -852,29 +954,58 @@ function updateBookingContents() {
 		$(".note", bookingTo).text(address.destinationNote);
 
 		if (currentBookingData.serviceType == 5) {
-			$("#bookingFoodItemsTitle").show();
-			var bookingFoodItems = $("#bookingFoodItems").empty().show();
+			$(".showMoreDetails").show();
+			$("#bookingItemsWrapper").show();
+			var bookingItems = $("#bookingItems").empty();
 			var routeItems = currentBookingData.addresses[0].routeItems;
 
 			for (var i in routeItems) {
 				var item = routeItems[i];
 				var theRow = $("<div class='settingsBox'><div class='twoColumn'><div class='cGrow'><div>" + item.itemName + "</div><div>" + (item.itemDescription == null ? "" : item.itemDescription) + "</div></div><div class='cRight'>Rp" + item.price.formatMoney(0) + "</div></div><div class='twoColumn'><div class='cGrow'>" + item.notes + "</div><div class='cRight'>x" + item.quantity + "</div></div></div>");
-				bookingFoodItems.append(theRow);
+				bookingItems.append(theRow);
 			}
 		}
+
+		if (bookingPolyline != null) bookingPolyline.setMap(null);
+		if (bookingOriginMarker != null) bookingOriginMarker.setMap(null);
+		if (bookingDestinationMarker != null) bookingDestinationMarker.setMap(null);
+
+		bookingPolyline = new google.maps.Polyline({
+			path: google.maps.geometry.encoding.decodePath(currentBookingData.addresses[0].routePolyline),
+			geodesic: true,
+			strokeColor: "#0000FF",
+			strokeWeight: POLYLINE_WEIGHT
+		});
+		bookingPolyline.setMap(bookingMap);
+		bookingOriginMarker = new google.maps.Marker({
+			position: commaSeparatedLatLng(currentBookingData.addresses[0].latLongOrigin),
+			title: "Your pick up location",
+			icon: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png"
+		});
+		bookingOriginMarker.setMap(bookingMap);
+		bookingDestinationMarker = new google.maps.Marker({
+			position: commaSeparatedLatLng(currentBookingData.addresses[0].latLongDestination),
+			title: "Your destination",
+			icon: "http://maps.google.com/mapfiles/ms/icons/orange-dot.png"
+		});
+		bookingDestinationMarker.setMap(bookingMap);
+		bookingMap.panTo(commaSeparatedLatLng(currentBookingData.addresses[0].latLongOrigin));
 	}
 
 	if (!driverFound) return;
 
-	bookingDriverMarker = new google.maps.Marker({
-		position: {
-			lat: currentBookingData.driverLatitude,
-			lng: currentBookingData.driverLongitude
-		},
-		title: "Driver",
-		icon: "http://maps.google.com/mapfiles/ms/icons/green-dot.png"
+	if (bookingDriverMarker == null) {
+		bookingDriverMarker = new google.maps.Marker({
+			title: "Driver",
+			icon: "http://maps.google.com/mapfiles/ms/icons/green-dot.png"
+		});
+		bookingDriverMarker.setMap(bookingMap);
+	}
+
+	bookingDriverMarker.setPosition({
+		lat: currentBookingData.driverLatitude,
+		lng: currentBookingData.driverLongitude
 	});
-	bookingDriverMarker.setMap(bookingMap);
 }
 
 function rateBookingGoFood(orderNo, stars, feedback, callback) {
@@ -916,6 +1047,14 @@ function getStatusMessageAndControlCancelButton(paramBooking, cancelButton) {
 	}
 
 	switch (paramBooking.serviceType) {
+		case 1:
+			if (paramBooking.statusBooking == 7) {
+				setEnabled(cancelButton, false);
+				return "On the way with you";
+			} else if (paramBooking.statusBooking == 2) {
+				return "Arriving in " + (paramBooking.driverETA / 60) + " mins";
+			}
+			break;
 		case 5:
 		case 6:
 			if (paramBooking.statusBooking == 7) {
@@ -965,13 +1104,12 @@ function getStatusMessageAndControlCancelButton(paramBooking, cancelButton) {
 }
 
 function initBookingMap() {
-	var curloc = {
-		lat: currentLocation.coords.latitude,
-		lng: currentLocation.coords.longitude
-	};
-	bookingMap = new google.maps.Map(document.getElementById('bookingMap'), {
+	bookingMap = new google.maps.Map(document.getElementById("bookingMap"), {
 		zoom: 16,
-		center: curloc,
+		center: {
+			lat: currentLocation.coords.latitude,
+			lng: currentLocation.coords.longitude
+		},
 		clickableIcons: false,
 		mapTypeId: google.maps.MapTypeId.ROADMAP,
 		disableDefaultUI: true
@@ -1045,7 +1183,9 @@ function constructBookingEntry(paramBooking) {
 	box.append("<div>" + name + "</div>");
 
 	if (isCanceled(paramBooking)) {
-		box.append("<div style='color: maroon; font-weight: bold;'>CANCELED</div>");
+		box.append("<div style='color: #b71c1c; font-weight: bold;'>CANCELED</div>");
+	} else if (paramBooking.rate == null && isGoJekCompleteBooking(paramBooking)) {
+		box.append("<div style='color: #F57F17; font-weight: bold;'>NEEDS RATING</div>");
 	}
 
 	return box;
@@ -1078,6 +1218,11 @@ var goFoodBannerIndex = 0;
 
 function initContainer(name, elm) {
 	switch (name) {
+		case "login":
+			$("#loginError").hide();
+			$("#email, #password").val("");
+			$("[name=autoSignIn]")[0].checked = false;
+			break;
 		case "home":
 			updateGoPayBalance();
 			updateGoPointsBalance(function(data) {
@@ -1124,7 +1269,11 @@ function initContainer(name, elm) {
 			});
 			break;
 		case "goPoints":
+			$(".pointsPlay .loader", elm).show();
+			$(".pointsPlay .pointsText", elm).text("Loading...");
 			updateGoPointsBalance(function(data) {
+				$(".pointsPlay .loader", elm).hide();
+				$(".pointsPlay .pointsText", elm).text(data.tokens_balance > 0 ? "You have " + data.tokens_balance + " token(s) to play" : "Use GO-PAY to get token & earn points");
 				$(".goPointsBalance", elm).text(data.points_balance);
 				$(".goPointsTokenBalance", elm).text(data.tokens_balance);
 				var redeemToken = $("#redeemToken").unbind("click").click(function() {
@@ -1137,7 +1286,7 @@ function initContainer(name, elm) {
 							if (data1.success) {
 								alert("Redeemed token from " + data.service_type + ", added " + data.points + " token(s)");
 							}
-							initContainer(name);
+							initContainer(name, elm);
 						}, true, {
 							points_token_id: data.points_token_id
 						});
@@ -1145,6 +1294,51 @@ function initContainer(name, elm) {
 				});
 				setEnabled(redeemToken, data.tokens_balance > 0);
 			});
+			var availVouchersList = $("#goPointsVouchers").empty();
+			var load = function(page) {
+				xRequestData("/gopoints/v1/available-voucher-batches", {limit: 10, page: page}, function(data) {
+					var sortedData = data.data.sort(function(a, b) {
+						return a.points - b.points;
+					});
+
+					for (var i in sortedData) {
+						availVouchersList.append(constructVoucherCard(sortedData[i]));
+					}
+
+					if (data.next_page == null) return;
+
+					availVouchersList.append($("<button class='loadMore'>Load 10 more</button>").click(function() {
+						$(this).remove();
+						load(page + 1);
+					}));
+				});
+			};
+			load(1);
+			var myVouchersList = $("#goPointsMyVouchers").empty();
+			var loadMy = function(page) {
+				xRequestData("/gopoints/v1/wallet/vouchers", {limit: 10, page: page}, function(data) {
+					// var sortedData = data.data.sort(function(a, b) {
+					// 	return a.points - b.points;
+					// });
+
+					if (data.data != null && data.data.length > 0) {
+						for (var i in data.data) {
+							myVouchersList.append(constructVoucherCard(data.data[i]));
+						}
+					} else {
+						myVouchersList.append("<div class='listEmpty'>Use GO-PAY to get token to play, earn points and buy vouchers!</div>")
+					}
+
+					if (data.next_page == null) return;
+
+					myVouchersList.append($("<button class='loadMore'>Load 10 more</button>").click(function() {
+						$(this).remove();
+						loadMy(page + 1);
+					}));
+				});
+			};
+			loadMy(1);
+			// TODO my vouchers url: /gopoints/v1/wallet/vouchers?limit=10&page=1 IT IS JUST THE SAME AS data.data
 			break;
 		case "goRide":
 			initGoRide(elm);
@@ -1284,16 +1478,36 @@ function initContainer(name, elm) {
 	}
 }
 
+var currentVoucher;
+
+function constructVoucherCard(voucher) {
+	var card = $("<div class='card voucherCard clickable'></div>")
+		.append($("<div class='cardBG'></div>").css("background-image", "url(" + voucher.icon + ")"))
+		.append($("<div class='cardContent'></div>")
+			.append($("<div class='twoColumn'></div>")
+				.append("<div class='cGrow voucherMerchant'>" + voucher.sponsor_name + "</div>")
+				.append("<div class='voucherUpper'>" + voucher.points.formatMoney(0) + " pts</div>"))
+			.append("<div class='voucherTitle'>" + voucher.title + "</div>")
+			.append("<div class='voucherSubtitle'>" + voucher.sub_title + "</div>"))
+		.click(function() {
+			// currentVoucher = voucher;
+			// showContainer("voucherDetails");
+			window.open(BASE_URL + "/gopoints/frontend/dist/available-voucher-batch.html?" + $.param({Headers: JSON.stringify(generateAjaxHeaders()), voucher_batch_id: voucher.id}), "_blank");
+		});
+	return card;
+}
+
 function constructCompletedOrderCard(completedOrder) {
-	var orderButton;
+	var orderButton, cardContentTop;
 	var ret = $("<div class='card reorderCard'></div>")
-		.append($("<div class='cardContent twoColumn'></div>")
+		.append(cardContentTop = $("<div class='cardContent twoColumn'></div>")
 			.append($("<div class='imagePreview'></div>").css("background-image", "url('" + completedOrder.merchant.image + "')"))
 			.append($("<div class='cGrow'></div>")
+				.append("<div class='timeField secondary'>" + formatDate(new Date(completedOrder.ordered_at)) + "</div>")
 				.append("<div class='primary'>" + completedOrder.merchant.name + "</div>")
 				.append("<div class='secondary'>" + completedOrder.merchant.address + "</div>")))
 		.append($("<div class='cardContent cardBottom twoColumn'></div>")
-			.append("<div class='cGrow'>This costs Rp" + completedOrder.paid.formatMoney(0) + "</div>")
+			.append("<div class='cGrow costs'>This costs Rp" + completedOrder.paid.formatMoney(0) + "</div>")
 			.append(orderButton = $("<button class='orderButton' style='width: initial;'>Reorder</button>")
 				.click(function() {
 					var merchant = completedOrder.merchant;
@@ -1327,19 +1541,50 @@ function constructCompletedOrderCard(completedOrder) {
 					}
 
 					showGoFoodOrderConfirmation();
-				})
-			)
-		);
-
-
-	for (var i in completedOrder.items) {
-		if (!completedOrder.items[i].active) {
-			setEnabled(orderButton, false);
-			break;
+				})));
+	var isClosed = !isOpenByTimings(completedOrder.merchant.timings[0]);
+	
+	if (isClosed) {
+		setEnabled(orderButton, false);
+		cardContentTop.prepend("<div class='closedOverlay'><div>Closed</div></div>");
+	} else {
+		for (var i in completedOrder.items) {
+			if (!completedOrder.items[i].active) {
+				setEnabled(orderButton, false);
+				break;
+			}
 		}
 	}
 
 	return ret;
+}
+
+function isOpenByTimings(timings) {
+	var date = new Date();
+	return parseTime(timings.open_time) <= date && date <= parseTime(timings.close_time);
+}
+
+// http://www.timlabonne.com/2013/07/parsing-a-time-string-with-javascript/
+function parseTime(timeStr, dt) {
+	if (!dt) {
+		dt = new Date();
+	}
+ 
+	var time = timeStr.match(/(\d+)(?::(\d\d))?\s*(p?)/i);
+	if (!time) {
+		return NaN;
+	}
+	var hours = parseInt(time[1], 10);
+	if (hours == 12 && !time[3]) {
+		hours = 0;
+	} else {
+		hours += (hours < 12 && time[3]) ? 12 : 0;
+	}
+ 
+	dt.setHours(hours);
+	dt.setMinutes(parseInt(time[2], 10) || 0);
+	dt.setSeconds(0, 0);
+	return dt;
 }
 
 function updateGoFoodBanner() {
@@ -1357,51 +1602,51 @@ function setEnabled(jq, bool) {
 	}
 }
 
-function isZeroOrNull(paramInt) {
-	return paramInt == 0 || paramInt == null;
+function isZeroOrNull(i) {
+	return i == 0 || i == null;
 }
 
-function getNameOfServiceByInt(paramInt) {
-	switch (paramInt) {
+function getNameOfServiceByInt(i) {
+	switch (i) {
 		default: break;
 		case 1:
-				return "Go-Ride";
+			return "Go-Ride";
 		case 2:
-				case 14:
-				return "Go-Send";
+		case 14:
+			return "Go-Send";
 		case 3:
-				return "Go-Shop";
+			return "Go-Shop";
 		case 6:
-				return "Go-Mart";
+			return "Go-Mart";
 		case 5:
-				return "Go-Food";
+			return "Go-Food";
 		case 13:
-				case 24:
-				return "Go-Car";
+		case 24:
+			return "Go-Car";
 		case 7:
-				return "Go-Box";
+			return "Go-Box";
 		case 11:
-				return "Go-Tix";
+			return "Go-Tix";
 		case 4:
-				return "Go-Massage";
+			return "Go-Massage";
 		case 8:
-				return "Go-Glam";
+			return "Go-Glam";
 		case 9:
-				return "Go-Clean";
+			return "Go-Clean";
 		case 15:
-				return "Go-Auto";
+			return "Go-Auto";
 		case 10:
-				return "Go-Busway";
+			return "Go-Busway";
 		case 12:
-				return "Go-Med";
+			return "Go-Med";
 		case 19:
-				return "Go-Bluebird";
+			return "Go-Bluebird";
 		case 20:
-				return "Go-Silver";
+			return "Go-Silver";
 		case 21:
-				return "Go-Pulsa";
+			return "Go-Pulsa";
 		case 25:
-				return "Go-Points";
+			return "Go-Points";
 	}
 	return "No-Service";
 }
@@ -1442,6 +1687,10 @@ function initGoFoodOrderMap() {
 var goRideNearbyDriverMarkers = [];
 
 function initGoRide(elm) {
+	$("#goRideAfterSelected", elm).hide();
+	$("input[name=goRideUseGoPay]", elm).unbind("change").on("change", function() {
+		goRideUseGoPay = $("input[name=goRideUseGoPay]:checked", elm).val() == "true";
+	});
 	goRideFromMarker = null;
 	goRideToMarker = null;
 	goRideFrom = {};
@@ -1669,37 +1918,6 @@ function goRideSet(paramAddress, isDestination, elm) {
 	updateGoRideAdressSelection();
 }
 
-function createHistoryEntry(paramAddress, clickCallback) {
-	return $("<div class='settingsBox clickable'></div>").append("<div><b>" + paramAddress.name + "</b></div>").append("<div>" + paramAddress.note + "</div>").click(clickCallback);
-}
-
-function closeContainer(id) {
-	$(".container[data-id=" + id + "]").remove();
-}
-
-function requestData(req, data, callback, post, payload) {
-	data = (data) ? data : {};
-	callback = (callback) ? callback : $.noop;
-	var _post = (post != undefined) ? post : false;
-	var options = {
-		type: (_post) ? "POST" : "GET",
-		url: "https://api.gojekapi.com" + req + ($.isEmptyObject(data) ? "" : "?" + $.param(data)),
-		dataType: "json",
-		contentType: "application/json; charset=UTF-8",
-		headers: generateAjaxHeaders(),
-		success: callback,
-		statusCode: {
-			// 401: function() {
-			// 	alert("You have been logged out because of an expired session");
-			// 	logout();
-			// }
-		}
-	};
-	if (_post)
-		options["data"] = JSON.stringify(payload);
-	$.ajax(options);
-}
-
 var goRidePolyline;
 function calculateGoRide(orderButton) {
 	if (goRidePolyline != null) {
@@ -1722,7 +1940,21 @@ function calculateGoRide(orderButton) {
 
 				goRidePolyline.setPath(google.maps.geometry.encoding.decodePath(data.routes[0].routePolyline));
 				goRidePolyline.setMap(goRideMap);
-				setEnabled(orderButton, true);
+				$("#goRideAfterSelected").show();
+				$("#goRideDistance").text(data.totalDistance.toFixed(2));
+				$("#goRideGoPayPrice").html("<s>Rp" + data.totalPrice.formatMoney(0) + "</s> <b>Rp" + data.goPayPrice.goPayTotalPrice.formatMoney(0) + "</b>")
+				$("#goRideCashPrice").html("<b>Rp" + data.totalCash.formatMoney(0) + "</b>");
+				var goRideGoPayBalance = $("#goRideGoPayBalance").text("0");
+				updateGoPayBalanceWithCallback(function(data) {
+					goRideGoPayBalance.text(data.currentBalance.formatMoney(0));
+					if (data.currentBalance <= 0) {
+						setEnabled($("input[name=goRideUseGoPay][value=true]"), false);
+						$("input[name=goRideUseGoPay][value=false]")[0].checked = true;
+						goRideUseGoPay = false;
+					}
+
+					setEnabled(orderButton, true);
+				});
 			}
 		}
 	}, "POST", {
@@ -1741,13 +1973,44 @@ function calculateGoRide(orderButton) {
 	});
 }
 
+function createHistoryEntry(paramAddress, clickCallback) {
+	return $("<div class='settingsBox clickable'></div>").append("<div><b>" + paramAddress.name + "</b></div>").append("<div>" + paramAddress.note + "</div>").click(clickCallback);
+}
+
+function closeContainer(id) {
+	$(".container[data-id=" + id + "]").remove();
+}
+
+function requestData(req, data, callback, post, payload) {
+	data = (data) ? data : {};
+	callback = (callback) ? callback : $.noop;
+	var _post = (post != undefined) ? post : false;
+	var options = {
+		type: (_post) ? "POST" : "GET",
+		url: BASE_URL + req + ($.isEmptyObject(data) ? "" : "?" + $.param(data)),
+		dataType: "json",
+		contentType: "application/json; charset=UTF-8",
+		headers: generateAjaxHeaders(),
+		success: callback,
+		statusCode: {
+			// 401: function() {
+			// 	alert("You have been logged out because of an expired session");
+			// 	logout();
+			// }
+		}
+	};
+	if (_post)
+		options["data"] = JSON.stringify(payload);
+	return $.ajax(options);
+}
+
 function xRequestData(req, queries, callback, method, payload) {
 	queries = queries || {};
 	callback = callback || $.noop;
 	method = method || "GET";
 	var options = {
 		type: method,
-		url: "https://api.gojekapi.com" + req + ($.isEmptyObject(queries) ? "" : "?" + $.param(queries)),
+		url: BASE_URL + req + ($.isEmptyObject(queries) ? "" : "?" + $.param(queries)),
 		dataType: "json",
 		contentType: "application/json; charset=UTF-8",
 		headers: generateAjaxHeaders(),
@@ -1766,7 +2029,7 @@ function xRequestData(req, queries, callback, method, payload) {
 	};
 	if (method == "PUT" || method == "POST")
 		options["data"] = JSON.stringify(payload);
-	$.ajax(options);
+	return $.ajax(options);
 }
 
 function generateAjaxHeaders() {
@@ -1778,7 +2041,7 @@ function generateAjaxHeaders() {
 		"X-User-Locale": "en_ID",
 		"X-Platform": "Android",
 		"X-AppId": "com.gojek.app",
-		"user-uuid": theCustomer.id,
+		"user-uuid": theCustomer == null ? "" : theCustomer.id,
 		"Accept-Language": "en-ID"
 	};
 }
@@ -1788,7 +2051,7 @@ function plural(paramInt) {
 }
 
 function makeLocation() {
-	return currentLocation.coords.latitude + "," + currentLocation.coords.longitude;
+	return currentLocation == null ? "UNKNOWN" : currentLocation.coords.latitude + "," + currentLocation.coords.longitude;
 }
 
 function formatPhoneNumber(paramString, convertTo08) {
@@ -1796,10 +2059,9 @@ function formatPhoneNumber(paramString, convertTo08) {
 	var zero8 = "08";
 	var plus628 = "+628";
 	var replaceFrom = convertTo08 ? plus628 : zero8;
-	var replaceTo = !convertTo08 ? plus628 : zero8;
 
 	if (paramString.startsWith(replaceFrom)) {
-		paramString = paramString.replace(replaceFrom, replaceTo);
+		paramString = paramString.replace(replaceFrom, !convertTo08 ? plus628 : zero8);
 	}
 
 	var i = 0;
@@ -1834,3 +2096,29 @@ String.prototype.replaceAll = function(search, replacement) {
 	var target = this;
 	return target.replace(new RegExp(search, 'g'), replacement);
 };
+
+function parseBool(value) {
+	if (value == null) { return false; }
+
+	if (typeof value == "number") {
+		return parseInt(value) > 0;
+	}
+
+	switch (value.toString().toLocaleLowerCase()) {
+		case "1":
+		case "true":
+		case "yes":
+		case "on":
+			return true;
+		default:
+			return false;
+	}
+}
+
+function setCookie(key, value) {
+	localStorage[key] = value;
+}
+
+function getCookie(key) {
+	return localStorage[key];
+}
