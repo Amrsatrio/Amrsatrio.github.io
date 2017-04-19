@@ -1,22 +1,25 @@
 <!DOCTYPE html>
 <html>
 	<head>
+		<meta charset="UTF-8">
 		<title>GO-JEK Web</title>
+		<link rel="manifest" href="manifest.json">
+		<link href="https://fonts.googleapis.com/css?family=Material+Icons|Roboto:400,500,700" rel="stylesheet">
+		<link href="utility-opentype.min.css" type="text/css" rel="stylesheet" />
+		<link href="GoJekWeb.css" rel="stylesheet" />
+		<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDpfUyXuE1AJSwg_vZBWrh7wIX9dvSzC7Y&libraries=geometry"></script>
 		<script src="js/jquery-3.1.1.min.js"></script>
 		<script src="js/jquery-ui.min.js"></script>
 		<script src="js/underscore-min.js"></script>
 		<script src="js/arrive.min.js"></script>
-		<script async defer src='https://maps.googleapis.com/maps/api/js?key=AIzaSyDpfUyXuE1AJSwg_vZBWrh7wIX9dvSzC7Y&libraries=geometry'></script>
-		<link href="utility-opentype.min.css" type="text/css" rel="stylesheet" />
 		<script src="js/GoJekWeb.js"></script>
-		<link href="GoJekWeb.css" rel="stylesheet" />
 	</head>
 	<body>
 		<div class="siteWrapper pnum lnum">
 			<div class="container" data-name="login">
 				<div class="wrapper">
-					<h1>Sign In</h1>
-					<form action="about:blank" method="get" onsubmit="loginSubmit(); return (false);" class="loginForm">
+					<h1 class="gojekLogo"><img src="logo-gojek-hitam.svg" /></h1>
+					<form action="about:blank" method="get" onsubmit="loginSubmit(); return false" class="loginForm">
 						<input type="email" name="email" placeholder="Email" id="email" required />
 						<input type="password" name="password" placeholder="Password" id="password" required />
 						<label><input type="checkbox" name="autoSignIn" checked="false" />Sign in automatically</label>
@@ -27,26 +30,27 @@
 					<div class="disclaimer"><b>DISCLAIMER</b><br>This web port of Android version of GO-JEK is very unstable and experimental. This app mostly fails to validate your request and can't handle errors properly. I recommend you to bring your smartphone with GO-JEK app installed. This app is not a total replacement of the mobile app. Use this web app <b>at your own risk</b>.<br>~ AS</div>
 				</div>
 			</div>
-			<div class="container" data-name="home">
+			<div class="container withFlex" data-name="home">
 				<div class="wrapper">
-					<h1>GO-JEK</h1>
+					<h1 class="gojekLogo"><img src="logo-gojek-hitam.svg" /></h1>
 					<div class="tabContainer" data-tabcontainername="HOME">
 						<div class="tab" data-tabname="HOME">Home</div>
 						<div class="tab" data-tabname="HISTORY">History<span id="historyAppendable"></span></div>
 						<div class="tab" data-tabname="PROFILE">My Account</div>
 					</div>
 					
-					<div class="tabContentsContainer" data-tabcontainername="HOME">
+					<div class="tabContentsContainer scrollable" data-tabcontainername="HOME">
 						<div class="tabContents" data-tabname="HOME">
-							<div class="twoColumn">
-								<button class="cGrow" onclick="window.open('https://www.go-jek.com/credits/top-up', '_blank');">GO-PAY: Rp<span class="goPayBalance"></span></button>
-								<button class="cGrow" onclick="showContainer('goPoints');">GO-POINTS: <span class="goPointsBalance"></span></button>
+							<div class="flexCenter">
+								<button class="flexGrow" onclick="showContainer('goPay')">GO-PAY: <span class="goPayBalance"></span></button>
+								<button class="flexGrow" onclick="showContainer('goPoints')">GO-POINTS: <span class="goPointsBalance"></span></button>
 							</div>
-							<div class="twoColumn serviceList">
-								<button class="cGrow" onclick="showContainer('goRide');">GO-RIDE</button>
-								<button class="cGrow" onclick="showContainer('goCar');" disabled>GO-CAR</button>
-								<button class="cGrow" onclick="showContainer('goFood');">GO-FOOD</button>
-								<button class="cGrow" onclick="showContainer('goSend');" disabled>GO-SEND</button>
+							<div id="homeBanner" class="hero"></div>
+							<div class="fourColumn serviceList">
+								<div class="card cardContent clickable" onclick="showContainer('goRide')"><img src="goride-icon.png" /><div>GO-RIDE</div></div>
+								<div class="card cardContent clickable disabled"><img src="gocar-icon.png" /><div>GO-CAR</div></div>
+								<div class="card cardContent clickable" onclick="showContainer('goFood')"><img src="gofood-icon.png" /><div>GO-FOOD</div></div>
+								<div class="card cardContent clickable disabled"><img src="gosend-icon.png" /><div>GO-SEND</div></div>
 							</div>
 						</div>
 						<div class="tabContents" data-tabname="HISTORY">
@@ -56,55 +60,158 @@
 							<div id="completedList"></div>
 						</div>
 						<div class="tabContents" data-tabname="PROFILE">
-							<div class="settingsBox twoColumn">
-								<div class="cGrow">
-									<div id="homeCustomerName"></div>
-									<div id="homeCustomerEmail"></div>
-									<div id="homeCustomerPhone"></div>
-								</div>
-								<div>
-									<button class="flat" style="margin-right: -8px;" disabled>Edit</button>
+							<div>
+								<div class="settingsBox flexCenter">
+									<div class="flexGrow">
+										<div id="homeCustomerName"></div>
+										<div id="homeCustomerEmail"></div>
+										<div id="homeCustomerPhone"></div>
+									</div>
+									<div>
+										<button class="flat" style="margin-right: -8px" onclick="showContainer('editProfile')">Edit</button>
+									</div>
 								</div>
 							</div>
 							<div class="textSeparator"></div>
-							<div class="settingsBox clickable" onclick="window.open('http://www.go-jek.com/terms-of-service', '_blank');">Terms of service</div>
-							<div class="settingsBox clickable" onclick="window.open('http://www.go-jek.com/privacy-policy', '_blank');">Privacy policy</div>
+							<div>
+								<div class="settingsBox clickable flexCenter" onclick="showContainer('goPay')"><div class="flexGrow">GO-PAY</div><div class="goPayBalance"></div></div>
+								<div class="settingsBox clickable flexCenter" onclick="showContainer('goPoints')"><div class="flexGrow">GO-POINTS</div><div class="goPointsBalance"></div></div>
+							</div>
 							<div class="textSeparator"></div>
-							<div class="settingsBox clickable" onclick="showContainer('login'); clearEmailRefreshToken();">Back to sign in page</div>
-							<div class="settingsBox clickable" id="logout"><div>Sign out on all of your connected devices</div><div><b>WARNING: You'll need to sign in again on those devices if you want to keep using the mobile app on them</b></div></div>
+							<div>
+								<div class="settingsBox clickable" onclick="window.open('http://www.go-jek.com/terms-of-service', '_blank')">Terms of service</div>
+								<div class="settingsBox clickable" onclick="window.open('http://www.go-jek.com/privacy-policy', '_blank')">Privacy policy</div>
+							</div>
+							<!-- <div class="textSeparator"></div>
+							<div class="settingsBox clickable" onclick="showContainer('findingDriver')">Test searching driver screen</div> -->
+							<div class="textSeparator"></div>
+							<div>
+								<div class="settingsBox clickable" onclick="showContainer('login'); clearEmailRefreshToken()">Back to sign in page</div>
+								<div class="settingsBox clickable" id="logout"><div>Sign out on all of your connected devices</div><div><b>WARNING: You'll need to sign in again on those devices if you want to keep using the mobile app on them</b></div></div>
+							</div>
 						</div>
 					</div>
 				</div>
 			</div>
-			<div class="container" data-name="goPoints">
+			<div class="container" data-name="editProfile">
 				<div class="wrapper">
-					<button onclick="showContainer('home');">< Back</button>
-					<h1>GO-POINTS</h1>
+					<button onclick="showContainer('home')">< Back</button>
+					<h1>Edit profile</h1>
+					<form action="about:blank" method="get" onsubmit="updateProfileSubmit($(this)); return false" class="updateProfileForm">
+						<input type="text" name="name" placeholder="Name" autocomplete="off" required />
+						<input type="email" name="email" placeholder="Email" autocomplete="off" required />
+						<div class="flexCenter"><div>+62</div><input class="flexGrow" type="text" name="phone" placeholder="Phone number" autocomplete="off" onkeypress="return event.charCode >= 48 && event.charCode <= 57" maxlength="11" required /></div>
+						<button type="submit">Done</button>
+						<div class="loader size36"></div>
+					</form>
+				</div>
+			</div>
+			<div class="container" data-name="verifyProfile">
+				<div class="wrapper">
+					<!-- <button onclick="showContainer('home')">< Back</button> -->
+					<h1>Verification</h1>
+					<div class="verifyForm">
+						<div>Enter the code in the SMS that we've just sent to your new phone number:</div>
+						<input type="text" name="code" placeholder="Code" autocomplete="off" onkeypress="return event.charCode >= 48 && event.charCode <= 57" maxlength="4" required />
+						<button id="verifySubmit">Submit</button>
+						<div class="loader size36"></div>
+					</div>
+				</div>
+			</div>
+			<div class="container" data-name="goPay">
+				<div class="wrapper">
+					<button onclick="showContainer('home')">< Back</button>
+					<h1>GO-PAY</h1>
+					<div class="loader size36 listLoader"></div>
+					<div>Balance: <span id="goPayGoPayBalance">Rp 0</span></div>
+					<!-- <div id="goFoodOrderList"></div> -->
+					<a href="javascript:showGoPayTopup()">Top up</a>
+					<!-- <a>Transfer</a>
+					<a>Scan QR</a>
+					<a>Receive</a> -->
+					<a href="javascript:showContainer('goPayHistory')">Transactions</a>
+					<!-- <a>Withdraw</a>
+					<a>Voucher</a> -->
+				</div>
+			</div>
+			<div class="container" data-name="goPayHistory">
+				<div class="wrapper">
+					<button onclick='showContainer("goPay")'>< Back</button>
+					<h1>Transactions</h1>
+					<div id="goPayHistory"></div>
+					<div class="loader size36 listLoader" style="display: none"></div>
+				</div>
+			</div>
+			<div class="container withFlex" data-name="goPoints">
+				<div class="wrapper">
+					<div class="actionBar">
+						<div><button onclick="showContainer('home')" class="backButton"><span class="material-icons">arrow_back</span></button></div>
+						<div class="title">GO-POINTS</div>
+						<div><button onclick="window.open('https://www.go-jek.com/app/gopoint', 'blank')"><span class="material-icons">help</span></button></div>
+					</div>
 					<div id="goPointsMainText">
-						<div class="settingsBox goPointsBalanceBox"><div class="pointsBalanceTitle">Your Points</div><div><span class="goPointsBalance">0</span><span class="pts">pts</span></div></div>
-						<div class="settingsBox twoColumn"><div class="cGrow twoColumn pointsPlay"><div class="loader size24"></div><div class="cGrow pointsText"></div></div><button disabled id="redeemToken">Play</button></div>
+						<div class="settingsBox flexCenter">
+							<div class="goPointsBalanceBox flexGrow flexCenter">
+								<div class="flexCenter">
+									<div class="trophyIcon"></div>
+									<div class="flexGrow">
+										<div class="pointsBalanceTitle">My Points</div>
+										<div class="goPointsBalance">0</div>
+										<div class="loader size18"></div>
+									</div>
+								</div>
+							</div>
+							<div class="vDivider"></div>
+							<div class="pointsPlay flexGrow flexCenter">
+								<div class="playIcon"></div>
+								<div class="flexGrow"></div>
+								<button disabled class="colored" id="redeemToken">Play token</button>
+							</div>
+						</div>
 						<!-- Your tokens: <span class="goPointsTokenBalance">0</span> token(s) -->
 					</div>
 
 					<div class="tabContainer" data-tabcontainername="GOPOINTS">
-						<div class="tab" data-tabname="VOUCHERS">View voucher</div>
-						<!-- <div class="tab" data-tabname="VOUCHERS">Buy voucher</div> -->
-						<!-- <div class="tab" data-tabname="MYVOUCHERS">My voucher</div> -->
+						<!-- <div class="tab" data-tabname="VOUCHERS">View voucher</div> -->
+						<div class="tab" data-tabname="VOUCHERS">Buy voucher</div>
+						<div class="tab" data-tabname="MYVOUCHERS">My GO-POINTS</div>
 					</div>
 					
-					<div class="tabContentsContainer" data-tabcontainername="GOPOINTS">
-						<div class="tabContents" data-tabname="VOUCHERS" id="goPointsVouchers"></div>
+					<div class="tabContentsContainer scrollable" data-tabcontainername="GOPOINTS">
+						<div class="tabContents" data-tabname="VOUCHERS">
+							<div id="goPointsVouchers"></div>
+							<div class="loader size36 listLoader" style="display: none"></div>
+						</div>
 						<div class="tabContents" data-tabname="MYVOUCHERS" id="goPointsMyVouchers"></div>
 					</div>
 				</div>
 			</div>
+			<div class="container" data-name="goPointsPlay">
+				<div class="wrapper">
+					<div class="actionBar">
+						<div><button onclick="platterReset(); showContainer('goPoints')"><span class="material-icons">arrow_back</span></button></div>
+						<div class="title">GO-POINTS</div>
+					</div>
+					<div class="settingsBox flexCenter">
+						<div class="flexGrow">GO-POINTS</div>
+						<div id="goPointsPlayPointsBalance"></div>
+					</div>
+					<div class="goPointsMainCont">
+						<div class="platter front"></div>
+						<div class="platter back"></div>
+					</div>
+					<div class="listEmpty" id="goPointsPlayPlayingFrom"></div>
+					<div class="listEmpty" id="goPointsPlayTokensText"></div>
+					<!-- <button onclick="debugPlay()">DO IT!</button> -->
+				</div>
+			</div>
 			<div class="container" data-name="goRide">
 				<div class="wrapper">
-					<button onclick="showContainer('home');">< Back</button>
+					<button onclick="showContainer('home')">< Back</button>
 					<h1>GO-RIDE</h1>
-					<div id="goRideMap" style="height: 400px;"></div>
+					<div id="goRideMap" style="height: 400px"></div>
 
-					<div class="textSeparator">Choose pick up location</div>
+					<div class="textSeparator">Pick up location</div>
 					<div class="settingsBox" id="goRideFrom">
 						<div><input type="text" id="goRideFromName" placeholder="Address" /></div>
 						<div><input type="text" id="goRideFromNote" placeholder="Add notes" /></div>
@@ -112,7 +219,7 @@
 					<div id="goRideHistoryFrom"></div>
 					<div id="goRideSuggestionFrom"></div>
 
-					<div class="textSeparator">Choose destination</div>
+					<div class="textSeparator">Destination</div>
 					<div class="settingsBox" id="goRideTo">
 						<div><input type="text" id="goRideToName" placeholder="Address" /></div>
 						<div><input type="text" id="goRideToNote" placeholder="Add notes" /></div>
@@ -121,9 +228,9 @@
 					<div id="goRideSuggestionTo"></div>
 
 					<div id="goRideAfterSelected">
-						<div class="textSeparator">Pay with (<span id="goRideDistance"></span> km):</div>
-						<label><div class="settingsBox"><div class="twoColumn"><div class="cGrow"><input type="radio" name="goRideUseGoPay" value="true" />GO-PAY (Rp<span id="goRideGoPayBalance">0</span>)</div><div id="goRideGoPayPrice"></div></div></div></label>
-						<label><div class="settingsBox"><div class="twoColumn"><div class="cGrow"><input type="radio" name="goRideUseGoPay" value="false" />Cash</div><div id="goRideCashPrice"></div></div></div></label>
+						<div class="textSeparator">Price (<span id="goRideDistance"></span> km):</div>
+						<label><div class="settingsBox"><div class="flexCenter"><div class="flexGrow"><input type="radio" name="goRideUseGoPay" value="true" checked />GO-PAY (Rp <span id="goRideGoPayBalance">0</span>)</div><div id="goRideGoPayPrice"></div></div></div></label>
+						<label><div class="settingsBox"><div class="flexCenter"><div class="flexGrow"><input type="radio" name="goRideUseGoPay" value="false" />Cash</div><div id="goRideCashPrice"></div></div></div></label>
 
 						<div class="textSeparator"></div>
 						<button class='orderButton'>ORDER</button>
@@ -132,41 +239,113 @@
 			</div>
 			<div class="container" data-name="goFood">
 				<div class="wrapper">
-					<button onclick="showContainer('home');">< Back</button>
+					<button onclick="showContainer('home')">< Back</button>
 					<h1>GO-FOOD</h1>
-					<div class="twoColumn"><button onclick="showSearch()" class="cGrow">Search...</button><button onclick="showContainer('goFoodOrders');">My orders</button></div>
-					<div id="goFoodBanner" class="hero"></div>
-					<div class="threeColumn" id="shortcuts"></div>
-					<div class="textSeparator cuisinesHeader">Choose the type of dishes you love</div>
-					<div class="threeColumn" id="cuisines"></div>
+					<div class="flexCenter"><button onclick="showGoFoodSearch()" class="flexGrow">Search...</button><button onclick="showContainer('goFoodOrders')">My orders</button></div>
+					<div id="goFoodHomeContent">
+						<div id="goFoodBanner" class="hero"></div>
+						<div class="threeColumn" id="shortcuts"></div>
+						<div class="textSeparator cuisinesHeader">Choose the type of dishes you love</div>
+						<div class="threeColumn" id="cuisines"></div>
+					</div>
+					<div class="loader size36 listLoader" style="display: none"></div>
 				</div>
 			</div>
 			<div class="container" data-name="goFoodOrders">
 				<div class="wrapper">
-					<button onclick='showContainer("goFood");'>< Back</button>
+					<button onclick='showContainer("goFood")'>< Back</button>
 					<h1>My orders</h1>
 					<div id="goFoodOrderList"></div>
+					<div class="loader size36 listLoader" style="display: none"></div>
 				</div>
 			</div>
 			<div class="container" data-name="goFoodSearch">
 				<div class="wrapper">
-					<button onclick='showContainer("goFood");'>< Back</button>
+					<button onclick='showContainer("goFood")'>< Back</button>
 					<h1>Search</h1>
-					<div class="twoColumn" id="foodSearch">
-						<input type="text" id="foodSearchQuery" class="cGrow" />
-						<button onclick="loadGoFoodSearch();" id="foodSearchQuerySubmit" class="cRight">Search</button>
+					<div class="flexCenter" id="foodSearch">
+						<input type="text" placeholder="What would you like to eat?" id="foodSearchQuery" class="flexGrow" />
+						<!-- <button onclick="loadGoFoodSearch()" id="foodSearchQuerySubmit" class="cRight">Search</button> -->
 					</div>
 					<div id="goFoodSearchList"></div>
-					<div class="loader size36 goFoodSearchLoader" style="display: none;"></div>
+					<div class="loader size36 listLoader" style="display: none"></div>
+				</div>
+			</div>
+			<div class="container withFlex" data-name="findingDriver">
+				<div class="wrapper">
+					<div class="animation">
+						<svg width="640px" height="572px" viewBox="0 0 640 572" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+							<!-- <title>Animation</title> -->
+							<style>
+								.driver {
+									animation: driverAnimation 4s linear infinite;
+								}
+
+								@keyframes driverAnimation {
+									from { x: 576; }
+									to { x: 0; }
+								}
+							</style>
+							<g>
+								<image xlink:href="finding-driver-bg-back.png" x="0" y="0" width="640px" height="572px" />
+								<image class="driver" xlink:href="animation-driver.png" x="0" y="326" width="64px" height="68px" />
+								<image xlink:href="finding-driver-bg-main.png" x="0" y="0" width="640px" height="572px" />
+							</g>
+						</svg>
+					</div>
+					<div class="bottomPortion">
+						<div class="title">Please wait</div>
+						<div class="subtitle">Searching for the nearest driver to you</div>
+						<!-- <div class="loader size36"></div> -->
+						<button id="searchingDriverCancel" class="fab" onclick="showContainer('bookingCancel');"><span class="material-icons">clear</span></button>
+					</div>
+					<button class="colored" onclick="showContainer('home')">New order</button>
+				</div>
+			</div>
+			<div class="container withFlex" data-name="bookingRate">
+				<div class="wrapper">
+					<div class="actionBar">
+						<div><button onclick="showContainer(rateGoBackTo)"><span class="material-icons">arrow_back</span></button></div>
+						<div class="title">Last order</div>
+						<div><div class="iconCont" id="bookingRateBookingTime"></div></div>
+					</div>
+					<div class="rateUpper">
+						<div class="flexCenter rateBookingInfo">
+							<div class="rateDriverPhotoCont">
+								<div id="rateDriverPhoto"></div>
+							</div>
+							<div class="flexGrow">
+								<div id="bookingRateDriverName"></div>
+								<div id="bookingRateServiceName"></div>
+							</div>
+							<div class="rateBookingInfoRight">
+								<div id="bookingRateTotalPrice">Rp 0</div>
+								<div id="bookingRatePaymentType"></div>
+							</div>
+						</div>
+						<div class="rateWidgetContainer">
+							<div id="bookingRateDesc"></div>
+							<div id="bookingRateWidget"></div>
+						</div>
+					</div>
+					<div class="rateFeedback rateInnerScreen">
+						<div class="rateSelectTitle"></div>
+						<div class="slot"></div>
+					</div>
+					<div class="rateTipAmounts rateInnerScreen">
+						<div class="rateSelectTitle">Do you want to tip the driver? (optional)</div>
+						<div class="slot"></div>
+					</div>
+					<button id="bookingRateSubmit" class="colored" disabled>Submit</button>
 				</div>
 			</div>
 			<div class="container" data-name="bookingCancel">
 				<div class="wrapper">
-					<button onclick='showContainer("viewBooking");'>< Back</button>
+					<button onclick="showContainer('viewBooking')">< Back</button>
 					<h1>Cancellation reason</h1>
-					<div class='textSeparator'>May we know why you're canceling this order?</div>
-					<div id='cancelList'></div>
-					<button id='cancelConfirm' style="width: 100%;" disabled>Cancel order</button>
+					<div class="textSeparator">May we know why you're canceling this order?</div>
+					<div id="cancelList"></div>
+					<button id="cancelConfirm" style="width: 100%" disabled>Cancel order</button>
 				</div>
 			</div>
 		</div>

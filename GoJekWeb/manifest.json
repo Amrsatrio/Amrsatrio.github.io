@@ -1,0 +1,7 @@
+{
+	"name": "GO-JEK Web",
+	"short_name": "GO-JEK Web",
+	"display": "standalone",
+	"start_url": "/index.html", 
+	"gcm_sender_id": "426205756249"
+}

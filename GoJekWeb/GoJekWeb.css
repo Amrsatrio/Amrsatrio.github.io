@@ -30,13 +30,23 @@
 	--settings-padding-hor: 16px;
 	--settings-padding-ver: 6px;
 	--global-max-width: 640px;
-	--estimated-cost-height: 64px;
+	--estimated-cost-height: 58px;
 	--primary-color: #3DC057;
 	--accent-color: #90C74A;
+	--gopay-color-primary: #40A4DB;
+	--gopay-color-text: #5CA5DA;
+	--todo-color-1a: #4E4E4E;
+	--todo-color-1b: #8F8E94;
+	--todo-color-1c: #030303;
+	--todo-color-1d: #2CA94A;
+	--sky-color: #a6cfcf;
+	/*--divider-color: #e4e4e4;*/
+	--divider-color: #e4e4e4;
 }
 
 * {
-	font-family: "cera";
+	/* font-family: Roboto; */
+	font-family: cera;
 	box-sizing: border-box;
 }
 
@@ -46,7 +56,7 @@ body {
 }
 
 body, input, button, select, option {
-	font-size: 18px;
+	font-size: 16px;
 }
 
 h1 {
@@ -54,6 +64,7 @@ h1 {
 	font-family: "lemonmilk";
 	letter-spacing: 2px;
 	text-shadow: #e0e0e0 1px 1px 0px, #e0e0e0 2px 2px 0px, #e0e0e0 3px 3px 0px, #e0e0e0 4px 4px 0px, #e0e0e0 5px 5px 0px, #e0e0e0 6px 6px 0px, #e0e0e0 7px 7px 0px, #e0e0e0 8px 8px 0px, #e0e0e0 9px 9px 0px, #e0e0e0 10px 10px 0px;
+	margin: 16px 0;
 }
 
 .container {
@@ -67,11 +78,7 @@ h1 {
 
 .wrapper {
 	width: var(--global-max-width) !important;
-	margin: 8px auto;
-}
-
-img {
-	width: 100%;
+	margin: 0 auto;
 }
 
 .loader {
@@ -82,6 +89,11 @@ img {
 .loader.size12 {
 	width: 12px;
 	height: 12px;
+}
+
+.loader.size18 {
+	width: 18px;
+	height: 18px;
 }
 
 .loader.size24 {
@@ -112,6 +124,7 @@ img {
 	height: 200px;
 	background-position: center;
 	background-size: cover;
+	background-color: #f1f1f1;
 }
 
 .cardContent {
@@ -136,19 +149,19 @@ img {
 .settingsBox {
 	padding: var(--settings-padding-ver) var(--settings-padding-hor);
 	background-color: white;
-	border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+	border-bottom: 1px solid var(--divider-color);
 }
 
 .settingsBox:last-child {
 	border-bottom: initial;
 }
 
-.twoColumn {
+.flexCenter {
 	display: flex;
 	align-items: center;
 }
 
-.twoColumn > .cGrow {
+.flexCenter > .flexGrow {
 	flex: 1;
 }
 
@@ -172,12 +185,12 @@ img {
 	box-shadow: 0 19px 38px rgba(0,0,0,0.30), 0 15px 12px rgba(0,0,0,0.22);
 }
 
-.loginForm {
+.loginForm, .updateProfileForm, .verifyForm {
 	width: 50%;
 	margin: auto;
 }
 
-.loginForm > input:not([type=checkbox]), .loginForm > button, .loginForm > label {
+.loginForm > input, .loginForm > button, .loginForm > label {
 	width: 100%;
 	margin: 0 auto 20px;
 	display: block;
@@ -188,11 +201,33 @@ img {
 	display: block;
 }
 
-#destName, #goRideFromName, #goRideToName, #bookingFrom > .cGrow > .name, #bookingTo > .cGrow > .name, #homeCustomerName, .voucherUpper, .voucherTitle {
+.updateProfileForm > input, .updateProfileForm > button, .verifyForm > input, .verifyForm > button {
+	width: 100%;
+	margin: 0 auto 20px;
+	display: block;
+}
+
+.updateProfileForm > div, .verifyForm > div {
+	width: 100%;
+	margin: 0 auto 20px;
+}
+
+.updateProfileForm > .loader, .verifyForm > .loader {
+	margin: 0 auto 20px;
+	display: block;
+}
+
+#loginError {
+	margin-bottom: 20px;
+	color: red;
+	text-align: center;
+}
+
+#destName, #goRideFromName, #goRideToName, #bookingFrom > .flexGrow > .name, #bookingTo > .flexGrow > .name, #homeCustomerName, .voucherUpper, .voucherTitle, .foodItem .price, #goPointsPlayPointsBalance {
 	font-weight: bold;
 }
 
-#bookingFrom > .cGrow, #bookingTo > .cGrow {
+#bookingFrom > .flexGrow, #bookingTo > .flexGrow {
 	padding-left: 8px;
 }
 
@@ -202,11 +237,13 @@ img {
 }
 
 #bookingFrom > .cRight {
-	background: url("http://maps.google.com/mapfiles/ms/icons/blue-dot.png");
+	background: url(marker-origin.png);
+	background-size: cover;
 }
 
 #bookingTo > .cRight {
-	background: url("http://maps.google.com/mapfiles/ms/icons/orange-dot.png");
+	background: url(marker-destination.png);
+	background-size: cover;
 }
 
 #goRideFrom input, #goRideTo input {
@@ -217,14 +254,21 @@ img {
 	width: 100%;
 }
 
-.threeColumn {
+.threeColumn, .fourColumn {
 	display: flex;
 	flex-flow: row wrap;
 	justify-content: space-between;
+	margin-bottom: -6px;
 }
 
 .threeColumn > div {
 	width: calc(33.33% - 4px);
+	margin-bottom: 6px;
+	margin-top: 0;
+}
+
+.fourColumn > div {
+	width: calc(25% - 4px);
 	margin-bottom: 6px;
 	margin-top: 0;
 }
@@ -262,15 +306,37 @@ img {
 	overflow: auto;
 }
 
+.goFoodMenu {
+	margin-bottom: var(--estimated-cost-height);
+}
+
 .estimatedCost {
 	height: var(--estimated-cost-height);
-	background: #ffcdd2;
+	background: white;
+	border-top: 4px solid #ffcdd2;
+	position: fixed;
+	bottom: 0;
 }
 
 .estimatedCost > div {
 	width: var(--global-max-width);
 	margin: 0 auto;
 	padding: 8px var(--settings-padding-hor);
+}
+
+.estimatedCost > div > div:first-child {
+	padding-right: 8px;
+}
+
+.vDivider {
+	width: 1px;
+	/*height: 100%;*/
+	background: var(--divider-color);
+	align-self: stretch;
+}
+
+.estimatedCost > div > div:last-child {
+	padding-left: 8px;
 }
 
 .orderButton {
@@ -289,7 +355,8 @@ button {
 	/*margin-bottom: 6px;*/
 }
 
-button:disabled {
+button:disabled, .clickable.disabled {
+	cursor: default;
 	opacity: 0.5;
 	box-shadow: none;
 }
@@ -318,9 +385,14 @@ button, .tab {
 	flex: 1;
 	text-align: center;
 	height: 48px;
-	line-height: 40px;
+	/*margin-bottom: 4px;*/
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	cursor: pointer;
 	padding: 0 16px;
+	text-transform: initial;
+	transition: color 250ms cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 .tab.active {
@@ -329,25 +401,40 @@ button, .tab {
 
 .tabContainer {
 	display: flex;
-	margin-bottom: 8px;
 	position: relative;
 }
 
 .tabContainer.scrolling {
 	overflow-x: auto;
-	display: inline-block;
+	/*display: inline-block;*/
 	width: 100%;
 	white-space: nowrap;
 }
 
+.tabContentsContainer.scrollable {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	position: relative;
+}
+
+.tabContentsContainer.scrollable .tabContents {
+	overflow: auto;
+	left: 0;
+	top: 0;
+	position: absolute;
+	width: 100%;
+	height: 100%;
+}
+
 .scrolling .tab {
-	display: inline-block;
+	display: inline-flex;
 	flex: initial;
 }
 
 .tabIndicator {
 	position: absolute;
-	height: 4px;
+	height: 2px;
 	background: var(--accent-color);
 	bottom: 0;
 	pointer-events: none;
@@ -357,16 +444,28 @@ button, .tab {
 	user-select: none;
 }
 
+.container.withFlex {
+	overflow: hidden;
+}
+
+.container.withFlex .wrapper {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+}
+
 span.redCircle {
-	background: #B71C1C;
+	background: #F34844;
 	font-size: 14px;
 	width: 20px;
 	height: 20px;
 	border-radius: 50%;
-	display: inline-block;
-	line-height: 20px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 	margin-left: 8px;
 	color: white;
+	text-align: center;
 }
 
 .actions {
@@ -377,9 +476,16 @@ span.redCircle {
 	flex: 1;
 }
 
-#goFoodBanner > .bannerImage {
-	height: 330px;
+.bannerImage {
 	background-size: cover;
+}
+
+#goFoodBanner .bannerImage {
+	height: 330px;
+}
+
+#homeBanner .bannerImage {
+	height: 204px;
 }
 
 .bannerControl {
@@ -398,6 +504,7 @@ span.redCircle {
 	background-size: cover;
 	background-position: center;
 	margin-right: 20px;
+	position: relative;
 }
 
 .cardBottom {
@@ -432,15 +539,15 @@ span.redCircle {
 	pointer-events: none;
 }
 
-.contentInnerAgain {
+.contentBottomPortion {
 	pointer-events: none;
 }
 
-.contentInner > *:not(.contentInnerAgain), .contentInnerAgain > * {
+.contentInner > *:not(.contentBottomPortion), .contentBottomPortion > * {
 	pointer-events: auto;
 }
 
-.contentInnerAgain {
+.contentBottomPortion {
 	position: absolute;
 	top: 0;
 	bottom: 0;
@@ -454,8 +561,8 @@ span.redCircle {
 	max-height: 100%;
 }
 
-.bookingStatusCard .moreDetails.shown {
-	border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+.bookingStatusCard .moreDetails.shown, .goRidePriceDetails {
+	border-bottom: 1px solid var(--divider-color);
 }
 
 .bookingStatusCard .cardContent {
@@ -463,26 +570,42 @@ span.redCircle {
 }
 
 .actionBar {
-	background: rgba(245, 245, 245, 0.8);
-	padding: 8px;
+	min-height: 56px;
+	background: rgba(33, 33, 33, 0.8);
+	box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.16), 0 2px 10px 0 rgba(0, 0, 0, 0.12);
+	display: flex;
+	align-items: center;
+	z-index: 0;
 }
 
 .actionBar .title {
 	font-family: lemonmilk;
-	text-align: center;
 	flex: 1;
-	font-size: 28px;
+	font-weight: 500;
+	font-size: 20px;
+	color: white;
+	padding-left: 18px;
 }
 
-.actionBar > * {
-	flex: 1;
-	display: flex;
-	justify-content: center;
+.actionBar button, .actionBar .iconCont {
+	height: 56px;
+	padding: 16px;
+	border-radius: 0;
+	background: none;
+	box-shadow: none;
+	color: white;
+	outline: none !important;
 }
-.actionBar > *:first-child > span { margin-right: auto; }
-.actionBar > *:last-child > span { margin-left: auto; }
 
-.goFoodSearchLoader, .loadMore {
+.actionBar button:hover {
+	background: rgba(204, 204, 204, 0.15);
+}
+
+.actionBar button:active {
+	background: rgba(204, 204, 204, 0.25);
+}
+
+.listLoader, .loadMore {
 	margin: 16px auto 0;
 	display: block;
 }
@@ -498,67 +621,102 @@ span.redCircle {
 
 .disclaimer {
 	text-align: center;
+	display: none;
 }
 
-.voucherTitle {
-	font-size: 20px;
+#driverPhoto, #rateDriverPhoto {
+	width: 100%;
+	height: 100%;
+	border-radius: 50%;
+	position: absolute;
+	top: 0;
+	left: 0;
+	background-size: cover;
+	background-position: center;
 }
 
-#driverPhoto {
+.driverPhotoWrapper {
 	width: 64px;
 	height: 64px;
 	border-radius: 32px;
-	background-color: #e0e0e0;
 	margin-right: 16px;
 	background-size: cover;
+	background-image: url(driver-placeholder.png);
+	position: relative;
 }
 
-.goPointsBalanceBox {
-	text-align: center;
+#goPointsMainText {
+	border-bottom: 1px solid #eaeaea;
 }
 
-.goPointsBalanceBox .pts {
-	display: inline-block;
-	vertical-align: top;
+.tabContainer[data-tabcontainername=GOPOINTS] {
+	background: white;
+}
+
+.goPointsBalanceBox > div > .flexGrow {
+	min-height: 46px;
+	/*align-self: stretch;*/
+}
+
+.goPointsBalanceBox .pointsBalanceTitle {
+	font-size: 14px;
+	color: #8e8e8e;
 }
 
 .goPointsBalanceBox .goPointsBalance {
-	display: inline-block;
-	font-size: 36px;
-	margin-right: 6px;
-	margin-top: -4px;
+	font-size: 24px;
+	font-weight: 500;
 }
 
-#loginError {
-	margin-bottom: 20px;
-	color: red;
-	text-align: center;
-}
-
-.voucherMerchant {
-	text-transform: uppercase;
+.voucherTitle {
+	font-size: 18px;
 }
 
 .voucherSubtitle {
-	color: #818181;
-}
-
-.pointsBalanceTitle {
-	font-size: 16px;
 	font-weight: 500;
 }
 
-.pointsPlay .loader {
-	margin-right: 8px;
+.pointsAmount {
+	margin-top: 6px;
 }
 
-.pointsPlay .pointsText {
-	font-weight: 500;
-	color: #4A4A4A;
+.pointsAmount .flexGrow:after {
+	content: " pts";
+}
+
+.trophyIcon {
+	background-image: url(ic_go_points_voucher_icon.svg);
+	background-size: cover;
+	width: 36px;
+	height: 36px;
+	margin-right: 12px;
+}
+
+.playIcon {
+	background-image: url(ic_go_points_voucher_icon.svg);
+	background-size: cover;
+	width: 36px;
+	height: 36px;
+	margin-left: 12px;
+	position: relative;
+}
+
+.playIcon > .redCircle {
+	margin: 0;
+	position: absolute;
+	right: 0;
+}
+
+.voucherPointsIcon {
+	background-image: url(ic_go_points_voucher_icon.svg);
+	background-size: cover;
+	width: 24px;
+	height: 24px;
+	margin-right: 6px;
 }
 
 .listEmpty {
-	font-size: 20px;
+	font-size: 18px;
 	text-align: center;
 	margin-top: 16px;
 }
@@ -572,13 +730,13 @@ span.redCircle {
 }
 
 .reorderCard .primary {
-	font-size: 20px;
+	font-size: 18px;
 }
 
 .closedOverlay {
 	position: absolute;
-	width: 136px;
-	height: 136px;
+	width: 100%;
+	height: 100%;
 	text-align: center;
 	background: rgba(0, 0, 0, 0.5);
 	display: flex;
@@ -595,4 +753,434 @@ span.redCircle {
 	font-weight: 500;
 	padding: 4px 6px;
 	border-radius: 2px;
+}
+
+.foodImg {
+	width: 64px;
+	height: 64px;
+	background-color: #f1f1f1;
+	background-size: cover;
+	background-position: center;
+	margin-right: 12px;
+}
+
+.foodHero {
+	height: 240px;
+	background-position: center;
+	background-size: cover;
+	background-color: #f1f1f1;
+	position: relative;
+}
+
+.foodHeroOverlay {
+	position: absolute;
+	width: 100%;
+	bottom: 0;
+	padding: 16px;
+	background: rgba(0, 0, 0, 0.36);
+}
+
+.foodHeroTitle {
+	font-weight: bold;
+	font-size: 18px;
+	color: white;
+	text-shadow: 0px 1px 5px black;
+}
+
+.quantity > * {
+	display: inline-block;
+}
+
+.quantity button {
+	min-width: 28px;
+	height: 28px;
+	box-shadow: none;
+	background: none;
+}
+
+.quantity {
+	border: 1px solid #9E9E9E;
+	margin-left: 4px;
+	border-radius: 2px;
+}
+
+.quantity #plus {
+	border-left: 1px solid #9E9E9E;
+}
+
+.quantity #min {
+	border-right: 1px solid #9E9E9E;
+}
+
+.qText {
+	padding: 0 8px;
+	text-align: center;
+}
+
+a {
+	color: var(--accent-color);
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+:not(a):focus {
+	animation: focuser .25s;
+	outline: 2px solid var(--accent-color);
+	outline-offset: 0;
+}
+
+@keyframes focuser {
+	from {
+		outline-color: transparent;
+		outline-offset: 4px;
+		outline-width: 12px;
+	}
+	to {
+		outline-color: var(--accent-color);
+		outline-offset: 0;
+		outline-width: 2px;
+	}
+}
+
+.goPayTransaction {
+	align-items: initial;
+}
+
+.goPayTransaction .desc {
+	color: var(--todo-color-1a);
+}
+
+.goPayTransaction .time {
+	color: var(--todo-color-1b);
+}
+
+.goPayTransaction .amou {
+	color: var(--todo-color-1c);
+}
+
+.goPayTransaction .amou.credit {
+	color: var(--todo-color-1d);
+}
+
+.goPayTransaction .amou.debit:before {
+	content: "-";
+}
+
+.goPointsMainCont {
+	width: 400px;
+	height: 360px;
+	margin: 0 auto;
+	background-image: url(gopoints-overlay-b.png), url(gopoints-overlay-a.png), url(gopoints-ring.png);
+	background-size: 320px, 350px, 300px;
+	background-repeat: no-repeat;
+	background-position: center center;
+	position: relative;
+}
+
+.platter {
+	background: url(gopoints-spinner.png) center center no-repeat;
+	background-size: 216px;
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	display: flex;
+	align-items: center;
+	flex-direction: column;
+	color: white;
+	font-weight: bold;
+	justify-content: center;
+	backface-visibility: hidden;
+	cursor: default;
+	user-select: none;
+}
+
+.platter.front {
+	z-index: 2;
+}
+
+.platter .numPoints {
+	font-size: 64px;
+}
+
+.platter .textPoints {
+	font-size: 36px;
+}
+
+.platter .textPoints:after {
+	content: "points";
+}
+
+.platter .textSwipe {
+	font-size: 40px;
+}
+
+.platter .numPoints, .platter .textPoints {
+	margin-top: -8px;
+}
+
+.foodItem > .upperContent {
+	align-items: stretch;
+}
+
+.foodItem > .upperContent > .flexGrow, .foodItem > .upperContent > .cRight {
+	display: flex;
+	flex-direction: column;
+}
+
+.foodItem > .upperContent > .cRight {
+	align-items: flex-end;
+}
+
+.foodItem .socialLike {
+	flex: 1;
+}
+
+.foodItem > .lowerContent {
+	margin-bottom: var(settings-padding-ver);
+}
+
+.foodItem > .lowerContent input {
+	width: 100%;
+}
+
+.foodItem .price {
+	flex: 1;
+	display: flex;
+	align-items: flex-end;
+}
+
+.serviceList img {
+	width: 80px;
+	flex: 1;
+}
+
+.serviceList .cardContent {
+	display: flex;
+	align-items: center;
+	min-height: 126px;
+}
+
+h1.gojekLogo > img {
+	width: 160px;
+}
+
+.backButton {
+	align-self: flex-start;
+}
+
+.listEmpty img {
+	width: 160px;
+	margin-bottom: 8px;
+}
+
+.animation {
+	background-color: var(--sky-color);
+	flex: 1;
+	height: 0;
+}
+
+.animation svg {
+	object-fit: contain;
+	height: 100%;
+}
+
+.bottomPortion {
+	padding: 24px;
+	text-align: center;
+}
+
+.bottomPortion {
+	text-transform: uppercase;
+	background: #212121;
+	color: white;
+}
+
+.bottomPortion .title {
+	font-size: 32px;
+	margin-bottom: 24px;
+	color: var(--primary-color);
+}
+
+.bottomPortion .subtitle {
+	margin-bottom: 20px;
+}
+
+button.fab {
+	border-radius: 50%;
+	color: blue;
+	background: white;
+	width: 48px;
+	height: 48px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+button.fab .material-icons {
+	font-size: 28px;
+}
+
+#searchingDriverCancel {
+	background: #424242;
+	color: red;
+}
+
+.slot .slotItem {
+	padding: 10px;
+	border-radius: 4px;
+	border: 1px solid #cfcfcf;
+}
+
+.slot .slotItem.selected {
+	background: #efa33e;
+	border-color: #efa33e;
+	color: white;
+}
+
+.rateInnerScreen {
+	background: #F5F5F5;
+	text-align: center;
+	padding: 16px 12px;
+	border: solid #eaeaea;
+	border-width: 1px 0;
+	color: #5a5a5a;
+}
+
+.rateSelectTitle {
+	margin-bottom: 16px;
+}
+
+.rateWidgetContainer {
+	text-align: center;
+	padding: 16px 0;
+}
+
+.rateWidget {
+	user-select: none;
+	height: 44px;
+}
+
+.rateWidget button {
+	background: none;
+	box-shadow: none;
+	padding: 0;
+	height: 44px;
+}
+
+.rateWidget button:not(:last-child) {
+	margin-right: 2px;
+}
+
+.rateWidget button span {
+	font-size: 44px;
+	-webkit-text-stroke: .5px #dadada;
+    color: #e9e9e9;
+}
+
+.rateWidget[data-amount="1"] > button:nth-child(-n+1) > span {
+	color: #eea13b;
+	-webkit-text-stroke: 0;
+}
+
+.rateWidget[data-amount="2"] > button:nth-child(-n+2) > span {
+	color: #eea13b;
+	-webkit-text-stroke: 0;
+}
+
+.rateWidget[data-amount="3"] > button:nth-child(-n+3) > span {
+	color: #eea13b;
+	-webkit-text-stroke: 0;
+}
+
+.rateWidget[data-amount="4"] > button:nth-child(-n+4) > span {
+	color: #eea13b;
+	-webkit-text-stroke: 0;
+}
+
+.rateWidget[data-amount="5"] > button > span {
+	color: #eea13b;
+	-webkit-text-stroke: 0;
+}
+
+#bookingRateDesc {
+	margin-bottom: 16px;
+}
+
+.rateUpper {
+	padding: 0 16px;
+	background: white;
+	color: #5c5c5c;
+}
+
+.rateBookingInfo {
+	border-bottom: 1px solid #e5e5e5;
+	padding: 12px 0;
+}
+
+.rateDriverPhotoCont {
+	width: 48px;
+	height: 48px;
+	position: relative;
+	background: url(booking-rate-driver-placeholder.png) no-repeat;
+	background-size: 100%;
+	margin-right: 12px;
+}
+
+#bookingRateBookingTime {
+	color: #979797;
+}
+
+.rateBookingInfoRight {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+#bookingRateServiceName {
+	font-size: 14px;
+	color: #999;
+}
+
+#bookingRateDriverName {
+	font-weight: bold;
+	font-size: 17px;
+	margin-bottom: 2px;
+}
+
+#bookingRatePaymentType {
+	border-radius: 2px;
+	color: white;
+	min-width: 72px;
+	text-align: center;
+	padding: 2px 0;
+	font-size: 14px;
+}
+
+#bookingRateTotalPrice {
+	margin-bottom: 4px;
+}
+
+#bookingRatePaymentType.goPay {
+	background-color: var(--gopay-color-text);
+}
+
+#bookingRatePaymentType.goPay:before {
+	content: "GO-PAY";
+}
+
+#bookingRatePaymentType.cash {
+	background-color: var(--todo-color-1d);
+}
+
+#bookingRatePaymentType.cash:before {
+	content: "CASH";
+}
+
+#bookingRateSubmit {
+	width: 100%;
 }
