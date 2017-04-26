@@ -4,7 +4,8 @@ var Profile = {
 	LOGOUT: "/gojek/v2/customer/logout",
 	EDIT: "/gojek/v2/customer/edit/v2",
 	VERIFICATION_UPDATE: "/gojek/v2/customer/verificationUpdateProfile",
-	CUSTOMER_INFO: "/gojek/v2/customer"
+	CUSTOMER_INFO: "/gojek/v2/customer",
+	CHANGE_PASSWORD: "/gojek/v2/customer/changePassword"
 };
 var Home = {
 	PROMO_IMAGES: "/gojek/customer/promo_images_top"
@@ -19,7 +20,8 @@ var GoFood = {
 	SEARCH_MERCHANTS: "/gojek/merchant/find",
 	// VIEW_NEW_MERCHANT_DETAILS_UUID_DEPRECATED: "/gofood/consumer/v2/restaurants/",
 	HOME_NEW: "/gofood/consumer/v2/home",
-	COMPLETED_ORDERS: "/myresto/consumer/v1/orders/completed"
+	COMPLETED_ORDERS: "/myresto/consumer/v1/orders/completed",
+	SEARCH_MERCHANTS_AND_MENU: "/gofood/consumer/v2/search"
 };
 var Booking = {
 	HISTORY: "/gojek/v2/customer/v2/history/",
@@ -41,7 +43,6 @@ var GoPay = {
 	GET_BALANCE: "/gojek/v2/customer/currentBalance/",
 	DETAILED: "/wallet/profile/detailed",
 	HISTORY: "/wallet/history",
-	//TODO USE THEM BELOW
 	KYC_URL: "/wallet/kyc/url"
 };
 var GoPoints = {
@@ -62,7 +63,7 @@ var Cookies = {
 var POLYLINE_WEIGHT = 3,
 	DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
 	RATE_DESCS = ["Very bad", "Bad", "OK", "Good", "Awesome"], // 3 stars or less requires feedback
-	FAKE_APPVER = "2.19.0",
+	FAKE_APPVER = "2.19.2",
 	FAKE_UNIQUE_ID = "0123456789abcdef",
 //	FAKE_IMEI = "305825702132830",
 	BASE_URL = "https://api.gojekapi.com",
@@ -127,7 +128,8 @@ var POLYLINE_WEIGHT = 3,
 	rateSelectedFeedback,
 	rateTipSlot,
 	rateSelectedTip = 0,
-	notifSound;
+	notifSound,
+	goPayQrCode;
 
 $(document).ready(function() {
 	navigator.geolocation.getCurrentPosition(function(a) {
@@ -167,15 +169,17 @@ $(document).ready(function() {
 		enableHighAccuracy: true
 	});
 
-	// if ("serviceWorker" in navigator) {  
-	// 	navigator.serviceWorker.register("ServiceWorker.js").then(function() {
-	// 		console.log(arguments);
-	// 	}).catch(function(e) {
-	// 		console.error(e);
-	// 	});  
-	// } else {  
-	// 	console.warn("Service workers aren't supported in this browser.");  
-	// }
+	if ("serviceWorker" in navigator) {
+		if (!document.location.origin.startsWith("file")) {
+			navigator.serviceWorker.register("ServiceWorker.js").then(function() {
+				console.log(arguments);
+			}).catch(function(e) {
+				console.error(e);
+			});
+		}
+	} else {
+		console.warn("Service workers aren't supported in this browser.");  
+	}
 
 	$(".tabContainer").each(applyIndicator);
 	document.arrive(".tabContainer", applyIndicator);
@@ -202,7 +206,7 @@ $(document).ready(function() {
 			var toRight = tabContentNowShowing.index() < tabContentToShow.index();
 			tabAnimations[tabContainerName] = $({fake1: 0, fake2: 0}).animate({fake1: 30, fake2: 1}, {
 				duration: 250,
-				easing: "easeOutCubic",
+				easing: $.bez([0.4, 0.0, 0.2, 1]),
 				step: function(now, fx) {
 					if (fx.prop == "fake1") {
 						var a = toRight ? -now : now, b = toRight ? 30 - now : -30 + now;
@@ -320,7 +324,7 @@ function updateTabIndicator(tabName, animate, prev) {
 			left: left
 		}, {
 			duration: 250,
-			easing: "easeOutCubic"
+			easing: $.bez([0.4, 0.0, 0.2, 1])
 		});
 	} else {
 		tabIndicator.width(width).css("left", left);
@@ -421,6 +425,7 @@ function updateProfileSubmit(elm) {
 	showHide(loader, submit, true);
 	xRequestData(Profile.EDIT, {}, function(data) {
 		showHide(loader, submit, false);
+
 		if (data != null) {
 			updateCustomerInfo();
 			alert(data.message);
@@ -436,20 +441,42 @@ function updateProfileSubmit(elm) {
 	});
 }
 
+function changePasswordSubmit(elm) {
+	var loader = $(".loader", elm),
+		submit = $("[type=submit]", elm);
+	showHide(loader, submit, true);
+	xRequestData(Profile.CHANGE_PASSWORD, {}, function(data) {
+		showHide(loader, submit, false);
+
+		if (data != null) {
+			if (data.status == "OK") {
+				alert("Your password has been changed");
+				showContainer("home");
+			} else {
+				alert(data.message);
+			}
+		}
+	}, "POST", {
+		"currentPassword": $("[name=oldPw]").val(),
+		"newPassword": $("[name=newPw]").val(),
+		"confirmationNewPassword": $("[name=newPwConfirm]").val(),
+		"customerId": theCustomer.id
+	});
+}
+
 function showGoFoodSearch(stringCategory, titleOverride) {
 	var queries = {
 		location: makeLocation()
 	};
 	var showSearchBox = false;
 	var searchContainer = showContainer("goFoodSearch");
-	searchContainer.find("h1").text(titleOverride || "Search restaurants");
+	searchContainer.find(".actionBar .title").text(titleOverride || "Search restaurants");
 	var foodSearch = searchContainer.find("#foodSearch");
 	var foodSearchBox = foodSearch.find("#foodSearchQuery").val("").unbind("input").on("input", _.debounce(function() {
 		if (this.value.length >= 3) {
 			loadGoFoodSearch();
 		}
 	}, 1000));
-
 	var searchList = $("#goFoodSearchList").empty();
 
 	if (stringCategory != null) {
@@ -572,7 +599,7 @@ var calculatePrices = _.debounce(function() {
 function showFoodMerchant(uuid) {
 	goFoodCart = [];
 	goFoodCurrentMerchant = null;
-	var cRoot = $("<div class='container' data-id='" + currentContainerId + "' data-name='foodMerchantDetails'></div>");
+	var cRoot = $("<div class='container goFood' data-id='" + currentContainerId + "' data-name='foodMerchantDetails'></div>");
 	$(".siteWrapper").append(cRoot);
 	var container = $("<div class='wrapper'></div>");
 	cRoot.append($("<div class='scrollingContent'></div>").append(container));
@@ -590,7 +617,7 @@ function showFoodMerchant(uuid) {
 		goFoodCurrentMerchant = data;
 		foodHero.css("background-image", "url(" + (data.imgLocation || "") + ")");
 		$(".foodHeroTitle", foodHero).text(data.name);
-		container.append("<div class='estimatedCost clickable' id='foodCost' onclick='showGoFoodOrderConfirmation();'><div class='flexCenter'><div class='material-icons'>shopping_cart</div><div class='vDivider'></div><div><div>Estimated price: <b>Rp <span>0</span></b></div><div>CHECKOUT -></div></div></div></div>");
+		container.append("<div class='estimatedCost clickable' id='foodCost' onclick='showGoFoodOrderConfirmation();'><div class='flexCenter'><div class='material-icons'>shopping_cart</div><div class='vDivider'></div><div><div class='line1'>Estimated Price</div><div class='line2'>Rp <span>0</span></div></div></div></div>");
 		// var tempText = $("<div>" + JSON.stringify(data) + "</div>");
 		// container.append(tempText);
 	});
@@ -787,39 +814,44 @@ function showGoFoodOrderConfirmation() {
 	$(".siteWrapper").append(cRoot);
 	var wrapper = $("<div class='wrapper'></div>");
 	cRoot.append(wrapper);
-	wrapper.append("<button onclick='closeContainer(" + currentContainerId++ + "); resetGoFoodOrder();'>< Back</button>");
-	wrapper.append("<h1>Order</h1>");
-	wrapper.append("<div class='textSeparator'>Cart</div>");
-	var container1 = $("<div class='cartList'></div>");
-	wrapper.append(container1);
-	wrapper.append("<div class='textSeparator'>Payment</div>");
-	var priceSummary = $("<div class='settingsBox'></div>");
-	wrapper.append(priceSummary);
-	priceSummary.append("<div id='foodCost' class='flexCenter'><div class='flexGrow'>Cost (est.)</div><div>Rp <span>0</span></div></div>");
-	priceSummary.append("<div id='deliveryPrice' class='flexCenter'><div class='flexGrow'>Delivery<span id='km'></span></div><div>Rp <span id='price'>0</span></div></div>");
-	priceSummary.append("<div id='totalPrice' class='flexCenter'><div class='flexGrow'>Total price</div><div>Rp <span>0</span></div></div>");
-	priceSummary.append("<div id='deductionGoPay' class='flexCenter'><div class='flexGrow'>GO-PAY</div><div>- Rp <span>0</span></div></div>");
-	priceSummary.append("<div id='deductionCash' class='flexCenter'><div class='flexGrow'>Cash</div><div>- Rp <span>0</span></div></div>");
-	var payWith = $("<div class='settingsBox'>Pay with: <label><input type='radio' name='goFoodUseGoPay' value='true' checked />GO-PAY (Rp <span id='goFoodGoPayBalance'>0</span>)</label><label><input type='radio' name='goFoodUseGoPay' value='false' />Cash</label></div>");
-	wrapper.append(payWith);
+	wrapper.append("<div class='actionBar'><div><button onclick='closeContainer(" + currentContainerId++ + "); resetGoFoodOrder();' class='backButton'><span class='material-icons'>arrow_back</span></button></div><div class='title'>Booking Confirmation</div></div>");
+	var cartCard = $("<div class='card goFoodCard'></div>")
+		.append("<div class='cardTitle'>Items to order</div>")
+		.append("<div class='cardContent'><div class='cartList'></div></div>");
+	wrapper.append(cartCard);
+	var deliverToCard = $("<div class='card goFoodCard'></div>")
+		.append("<div class='cardTitle'>Deliver to</div>");
+	wrapper.append(deliverToCard);
+	deliverToCard.append("<div id='map' style='height: 400px;'></div>");
+	initGoFoodOrderMap();
+	var deliverToCardContent = $("<div class='cardContent'></div>");
+	deliverToCard.append(deliverToCardContent);
+	deliverToCardContent.append("<div class='settingsBox'><div><input type='text' id='destName' placeholder='Address (click on map first)' disabled style='width: 100%;' /></div><div><input type='text' id='destNote' placeholder='Notes' disabled style='width: 100%;' /></div></div>");
+	$("#destName").unbind("input").on("input", function() {
+		goFoodSelectedDest.name = this.value;
+	});
+	$("#destNote").unbind("input").on("input", function() {
+		goFoodSelectedDest.note = this.value;
+	});
+	deliverToCardContent.append("<div class='textSeparator'>History (select one to set as destination)</div>");
+	var historyList = $("<div class='historyList'></div>");
+	deliverToCardContent.append(historyList);
+	var paymentCard = $("<div class='card goFoodCard'></div>")
+		.append("<div class='cardTitle'>Payment details</div>");
+	var priceSummary = $("<div class='cardContent'></div>")
+		.append("<div id='foodCost' class='priceEntry flexCenter'><div class='flexGrow'>Cost (Est)</div><div>Rp <span>0</span></div></div>")
+		.append("<div id='deliveryPrice' class='priceEntry flexCenter'><div class='flexGrow'>Delivery<span id='km'></span></div><div>Rp <span id='price'>0</span></div></div>")
+		.append("<div id='totalPrice' class='priceEntry flexCenter'><div class='flexGrow'>Total price</div><div>Rp <span>0</span></div></div>")
+		.append("<div id='deductionGoPay' class='priceEntry flexCenter'><div class='flexGrow'>GO-PAY</div><div>- Rp <span>0</span></div></div>")
+		.append("<div id='deductionCash' class='priceEntry cash flexCenter'><div class='flexGrow'>Cash</div><div>- Rp <span>0</span></div></div>");
+	paymentCard.append(priceSummary).append("<div class='cardTitle'>Pay with</div>");
+	var payWith = $("<div class='settingsBox'><label><input type='radio' name='goFoodUseGoPay' value='true' checked />GO-PAY (Rp <span id='goFoodGoPayBalance'>0</span>)</label><label><input type='radio' name='goFoodUseGoPay' value='false' />Cash</label></div>");
+	paymentCard.append(payWith);
+	wrapper.append(paymentCard);
 	payWith.find("input[name=goFoodUseGoPay]").on("change", function() {
 		goFoodUseGoPay = $("input[name=goFoodUseGoPay]:checked", payWith).val() == "true";
 		updatePrices();
 	});
-	wrapper.append("<div class='textSeparator'>Deliver to</div>");
-	wrapper.append("<div id='map' style='height: 400px;'></div>");
-	initGoFoodOrderMap();
-	wrapper.append("<div class='settingsBox'><div><input type='text' id='destName' placeholder='Address (click on map first)' disabled style='width: 100%;' /></div><div><input type='text' id='destNote' placeholder='Notes' disabled style='width: 100%;' /></div></div>");
-	$("#destName").on("input", function() {
-		goFoodSelectedDest.name = this.value;
-	});
-	$("#destNote").on("input", function() {
-		goFoodSelectedDest.note = this.value;
-	});
-	wrapper.append("<div class='textSeparator'>History (select one to set as destination)</div>");
-	var historyList = $("<div class='historyList'></div>");
-	wrapper.append(historyList);
-	wrapper.append("<div class='textSeparator'></div>");
 	wrapper.append($("<button class='orderButton'>ORDER</button>").click(function() {
 		if (goFoodCart.length < 1) {
 			alert("No items in cart");
@@ -1058,7 +1090,7 @@ function showBooking(id, previewData) {
 	container.append("<div id='bookingMap'></div>")
 		.append($("<div class='actionBar'></div>")
 			.append("<div><button onclick='closeBooking();'><span class='material-icons'>arrow_back</span></button></div>")
-			.append("<div class='title'>" + getNameOfServiceByInt(previewData.serviceType || NaN).toUpperCase() + "</div>")
+			.append("<div class='title'>" + getNameOfServiceByInt(previewData == null ? NaN : previewData.serviceType).toUpperCase() + "</div>")
 			.append("<div><div class='iconCont'><div class='loader size24' style='display: none;' id='bookingLoader'></div></div></div>"))
 		.append(contentInner);
 	contentInner.append(
@@ -1070,14 +1102,14 @@ function showBooking(id, previewData) {
 		.append($("<button class='showMoreDetails'>Show details</button>").hide().click(function() {
 			var options = {
 				duration: 250,
-				easing: "easeOutCubic"
+				easing: $.bez([0.4, 0.0, 0.2, 1])
 			}
 			if (moreDetailsState = !moreDetailsState) {
-				moreDetails.finish().slideToggle(options);
+				moreDetails.finish().slideDown(options);
 				moreDetails.addClass("shown");
 				this.innerHTML = "Hide details";
 			} else {
-				moreDetails.finish().slideToggle(options);
+				moreDetails.finish().slideUp(options);
 				moreDetails.removeClass("shown");
 				this.innerHTML = "Show details";
 			}
@@ -1089,12 +1121,13 @@ function showBooking(id, previewData) {
 			.append($("<div id='paymentWrapper'></div>")
 				.append("<div class='textSeparator flexCenter'><div class='flexGrow'>Payment details</div><div>using <span id='bookingPaymentMethod'>Cash</div></div></div>")
 				.append($("<div></div>")
-					.append($("<div class='settingsBox'></div>")
-						.append("<div class='flexCenter'><div class='flexGrow'>Cost</div><div>Rp <span id='bookingCost'></span></div></div>")
-						.append("<div class='flexCenter'><div class='flexGrow'>Delivery Fee (<span id='bookingDistance'></span> km)</div><div>Rp <span id='bookingDeliveryFee'></span></div></div>")
-						.append("<div class='flexCenter'><div class='flexGrow'>Total Price</div><div>Rp <span id='bookingTotalPrice'></span></div></div>")
-						.append("<div class='flexCenter' id='bookingGoPayPriceContainer'><div class='flexGrow'>GO-PAY</div><div>- Rp <span id='bookingGoPayPrice'></span></div></div>")
-						.append("<div class='flexCenter'><div class='flexGrow'>Cash</div><div>- Rp <span id='bookingCashPrice'></span></div></div>")))))
+					.append($("<div></div>")
+						.append("<div class='priceEntry flexCenter'><div class='flexGrow'>Cost</div><div>Rp <span id='bookingCost'></span></div></div>")
+						.append("<div class='priceEntry flexCenter'><div class='flexGrow'>Delivery Fee (<span id='bookingDistance'></span> km)</div><div>Rp <span id='bookingDeliveryFee'></span></div></div>")
+						.append("<div class='priceEntry flexCenter'><div class='flexGrow'>Tip</div><div>Rp <span id='bookingTipAmount'></span></div></div>")
+						.append("<div class='priceEntry flexCenter'><div class='flexGrow'>Total Price</div><div>Rp <span id='bookingTotalPrice'></span></div></div>")
+						.append("<div class='priceEntry flexCenter' id='bookingGoPayPriceContainer'><div class='flexGrow'>GO-PAY</div><div>- Rp <span id='bookingGoPayPrice'></span></div></div>")
+						.append("<div class='priceEntry cash flexCenter'><div class='flexGrow'>Cash</div><div>Rp <span id='bookingCashPrice'></span></div></div>")))))
 		.append($("<div class='goRidePriceDetails settingsBox flexCenter'><div class='flexGrow'>Price (<span class='distance'>0.00</span> km)</div><div class='price'></div></div>").hide())
 		.append("<div class='settingsBox flexCenter'><div class='driverPhotoWrapper'><div id='driverPhoto'></div></div><div class='flexGrow'><div id='driverInfo'></div><div>Order No. " + bookingId + "</div><div id='bookingStatusText'></div></div></div>")
 		.append($("<div class='actions'></div>").append($("<button id='rate'>Rate</button>").hide().click(function() {
@@ -1144,11 +1177,32 @@ function closeBooking() {
 
 function updateBookingContents() {
 	// TODO: MAKE IT LIKE IN THE REAL GOJEK APP
+	if (currentBookingData.statusBooking == 6) {
+		if (currentContainer.name == "viewBooking") {
+			showContainer("findingDriver");
+			$("#bookingFindingDriverDesc").text(currentBookingData.reblast ? "We're finding you a new driver" : "Searching for the nearest driver to you");
+		}
+	} else {
+		if (currentContainer.name == "findingDriver") {
+			showContainer("viewBooking");
+		}
+	}
+
 	if (currentBookingData.serviceType == 5) {
 		$("#bookingCost").text((currentBookingData.shoppingActualPriceBeforeDiscount || currentBookingData.estimatedPriceBeforeDiscount).formatMoney(0));
 		$("#bookingDistance").text(currentBookingData.totalDistance.toFixed(2));
 		$("#bookingDeliveryFee").text(currentBookingData.totalPrice.formatMoney(0));
-		$("#bookingTotalPrice").text(currentBookingData.totalPriceWithoutDiscounts.formatMoney(0));
+		var tipAmountValueJq = $("#bookingTipAmount"),
+			tipAmountParent = tipAmountValueJq.parent().parent();
+
+		if (isZeroOrNull(currentBookingData.tipAmount)){
+			tipAmountParent.hide();
+		} else {
+			tipAmountParent.show();
+			tipAmountValueJq.text(currentBookingData.tipAmount.formatMoney(0));
+		}
+
+		$("#bookingTotalPrice").text((currentBookingData.totalPriceWithTips || currentBookingData.totalPriceWithoutDiscounts).formatMoney(0));
 
 		if (currentBookingData.paymentType == 4) {
 			$("#bookingGoPayPriceContainer").show();
@@ -1453,6 +1507,12 @@ function initContainer(name, elm) {
 			$("#email, #password").val("");
 			$("[name=autoSignIn]")[0].checked = false;
 			break;
+		case "changePassword":
+			var loader = $(".loader", elm).hide(),
+				oldPw = $("[name=oldPw]", elm).val(""),
+				newPw = $("[name=newPw]", elm).val(""),
+				newPwConfirm = $("[name=newPwConfirm]", elm).val("");
+			break;
 		case "editProfile":
 			var loader = $(".loader", elm).hide(),
 				name = $("[name=name]", elm).val(theCustomer.name),
@@ -1487,7 +1547,8 @@ function initContainer(name, elm) {
 					});
 				}
 			});
-			requestData(Booking.HISTORY_FULL + theCustomer.id, {}, function(data) {
+			xRequestData(Booking.HISTORY_FULL + theCustomer.id, {limit: 50}, function(data) {
+				if (data == null) return;
 				bookingHistoryData = data;
 				var inProgressBookings = [];
 				var completedBookings = [];
@@ -1508,8 +1569,8 @@ function initContainer(name, elm) {
 					historyAppendable.html("<span class='redCircle'>" + inProgressBookings.length + "</span>");
 				}
 
-				var inProgressList = $("#inProgressList", elm).empty();
-				var completedList = $("#completedList", elm).empty();
+				var inProgressList = $("#bookingInProgressList", elm).empty();
+				var completedList = $("#bookingCompletedList", elm).empty();
 
 				if (inProgressBookings.length < 1) {
 					inProgressList.append("<div class='settingsBox'>You have no in progress bookings</div>");
@@ -1727,33 +1788,58 @@ function initContainer(name, elm) {
 			});
 			break;
 		case "goPay":
-			var loader = $(".loader", elm).show();
+			var loader = $(".loader", elm).show(),
+				qrCodeJq = $("#goPayQrCode").empty().hide();
+			goPayQrCode = new QRCode(qrCodeJq[0], {
+				correctLevel: QRCode.CorrectLevel.Q//,
+				// maskPattern: QRCode.MaskPattern.PATTERN111
+			});
 			xRequestData(GoPay.DETAILED, {}, function(data) {
 				loader.hide();
 				if (data != null) {
-					$("#goPayGoPayBalance", elm).text("Rp " + data.data.balance.formatMoney(0));
+					$("#goPayGoPayBalance", elm).text(data.data.balance.formatMoney(0));
+					goPayQrCode.makeCode("{\"qr_id\":\"" + data.data.qr_id + "\"}");
+					qrCodeJq.show();
 				}
 			});
 			break;
 		case "goPayHistory":
 			var goPayList = $("#goPayHistory", elm);
-			// TODO theres a better way to do this
-			var loadMoreList = new LoadMoreList({
-				listJq: goPayList,
-				itemsPerLoad: 20,
-				url: GoPay.HISTORY,
-				adapt: function(data) {
-					return data.data.in_process.concat(data.data.success);
-				},
-				getItem: function(data) {
-					return $("<div class='settingsBox flexCenter goPayTransaction'></div>")
-						.append($("<div class='flexGrow desc'></div>")
-							.append(data.description.replaceAll("\n", "<br>"))
-							.append($("<div></div>").addClass("time").text(formatDate(new Date(new Date(data.transacted_at).getTime() - new Date().getTimezoneOffset() * 60000)))))
-						.append($("<div>Rp " + data.amount.formatMoney(0) + "</div>").addClass("amou").addClass(data.type));
+			var inProgressTitle = $("#goPayInProgressTitle").hide();
+			var completedTitle = $("#goPayCompletedTitle").hide();
+			var inProgressList = $("#goPayInProgressList").hide();
+			var completedList = $("#goPayCompletedList").hide();
+			var loader = $(".listLoader", elm).show();
+			var constructTransactionItem = function(data) {
+				return $("<div class='settingsBox flexCenter goPayTransaction'></div>")
+					.append($("<div class='flexGrow desc'></div>")
+						.append(data.description.replaceAll("\n", "<br>"))
+						.append($("<div></div>").addClass("time").text(formatDate(new Date(new Date(data.transacted_at).getTime() - new Date().getTimezoneOffset() * 60000)))))
+					.append($("<div>Rp " + data.amount.formatMoney(0) + "</div>").addClass("amou").addClass(data.type));
+			};
+			var doIt = function(x, y, z) {
+				if (x.length > 0) {
+					z.empty();
+					for (var i in x) {
+						z.append(constructTransactionItem(x[i]));
+					}
+					y.show();
+					z.show();
+				} else {
+					y.hide();
+					z.hide();
 				}
+			};
+			$(".listEmpty", goPayList).remove();
+			xRequestData(GoPay.HISTORY, {limit: 20, page: 1}, function(data) {
+				loader.hide();
+				if (data == null) {
+					goPayList.append("<div class='listEmpty'>Error</div>");
+					return;
+				}
+				doIt(data.data.in_process, inProgressTitle, inProgressList);
+				doIt(data.data.success, completedTitle, completedList);
 			});
-			loadMoreList.start();
 			break;
 		case "goPointsPlay":
 			platterReset();
@@ -2078,7 +2164,7 @@ function initGoRide(elm) {
 				return function() {
 					goRideSet(historyData, false, elm);
 				};
-			})(data[i])));
+			})(data[i]), true));
 		}
 	});
 	queries["location_type"] = "to";
@@ -2088,7 +2174,7 @@ function initGoRide(elm) {
 				return function() {
 					goRideSet(historyData, true, elm);
 				};
-			})(data[i])));
+			})(data[i]), true));
 		}
 	});
 	$("#goRideFrom", elm).unbind("mousedown").mousedown(function() {
@@ -2317,8 +2403,17 @@ function calculateGoRide(orderButton) {
 	});
 }
 
-function createHistoryEntry(paramAddress, clickCallback) {
-	return $("<div class='settingsBox clickable'></div>").append("<div><b>" + paramAddress.name + "</b></div>").append("<div>" + paramAddress.note + "</div>").click(clickCallback);
+function createHistoryEntry(paramAddress, clickCallback, showLine2) {
+	var split = paramAddress.name.split(", ");
+	var name = split.length > 1 ? split[0] : paramAddress.name;
+	var line2 = "";
+
+	if (split.length > 1 && showLine2) {
+		split.shift();
+		line2 = split.join(", ");
+	}
+
+	return $("<div class='settingsBox clickable'></div>").append("<div><b>" + name + "</b></div>").append("<div>" + line2 + "</div>").append("<div>" + paramAddress.note + "</div>").click(clickCallback);
 }
 
 function showContainer(name) {

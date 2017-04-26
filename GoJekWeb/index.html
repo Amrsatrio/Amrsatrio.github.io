@@ -12,6 +12,8 @@
 		<script src="js/jquery-ui.min.js"></script>
 		<script src="js/underscore-min.js"></script>
 		<script src="js/arrive.min.js"></script>
+		<script src="js/jquery.bez.min.js"></script>
+		<script src="js/qrcode.min.js"></script>
 		<script src="js/GoJekWeb.js"></script>
 	</head>
 	<body>
@@ -55,9 +57,9 @@
 						</div>
 						<div class="tabContents" data-tabname="HISTORY">
 							<div class="textSeparator">In progress</div>
-							<div id="inProgressList"></div>
+							<div id="bookingInProgressList"></div>
 							<div class="textSeparator">Completed</div>
-							<div id="completedList"></div>
+							<div id="bookingCompletedList"></div>
 						</div>
 						<div class="tabContents" data-tabname="PROFILE">
 							<div>
@@ -85,6 +87,8 @@
 							<!-- <div class="textSeparator"></div>
 							<div class="settingsBox clickable" onclick="showContainer('findingDriver')">Test searching driver screen</div> -->
 							<div class="textSeparator"></div>
+							<div class="settingsBox clickable" onclick="showContainer('changePassword')">Change password</div>
+							<div class="textSeparator"></div>
 							<div>
 								<div class="settingsBox clickable" onclick="showContainer('login'); clearEmailRefreshToken()">Back to sign in page</div>
 								<div class="settingsBox clickable" id="logout"><div>Sign out on all of your connected devices</div><div><b>WARNING: You'll need to sign in again on those devices if you want to keep using the mobile app on them</b></div></div>
@@ -93,11 +97,24 @@
 					</div>
 				</div>
 			</div>
+			<div class="container" data-name="changePassword">
+				<div class="wrapper">
+					<button onclick="showContainer('home')">< Back</button>
+					<h1>Change password</h1>
+					<form action="about:blank" method="get" onsubmit="changePasswordSubmit($(this)); return false" class="changePasswordForm spacedForm">
+						<input type="password" name="oldPw" placeholder="Old Password" autocomplete="off" required />
+						<input type="password" name="newPw" placeholder="New Password" autocomplete="off" required />
+						<input type="password" name="newPwConfirm" placeholder="Confirm New Password" autocomplete="off" required />
+						<button type="submit">Done</button>
+						<div class="loader size36"></div>
+					</form>
+				</div>
+			</div>
 			<div class="container" data-name="editProfile">
 				<div class="wrapper">
 					<button onclick="showContainer('home')">< Back</button>
 					<h1>Edit profile</h1>
-					<form action="about:blank" method="get" onsubmit="updateProfileSubmit($(this)); return false" class="updateProfileForm">
+					<form action="about:blank" method="get" onsubmit="updateProfileSubmit($(this)); return false" class="updateProfileForm spacedForm">
 						<input type="text" name="name" placeholder="Name" autocomplete="off" required />
 						<input type="email" name="email" placeholder="Email" autocomplete="off" required />
 						<div class="flexCenter"><div>+62</div><input class="flexGrow" type="text" name="phone" placeholder="Phone number" autocomplete="off" onkeypress="return event.charCode >= 48 && event.charCode <= 57" maxlength="11" required /></div>
@@ -120,25 +137,82 @@
 			</div>
 			<div class="container" data-name="goPay">
 				<div class="wrapper">
-					<button onclick="showContainer('home')">< Back</button>
-					<h1>GO-PAY</h1>
+					<div class="actionBar">
+						<div><button onclick="showContainer('home')" class="backButton"><span class="material-icons">arrow_back</span></button></div>
+						<div class="title">GO-PAY</div>
+						<div><button onclick="showContainer('goPaySettings')"><span class="material-icons">settings</span></button></div>
+					</div>
+					<div class="goPayBalanceBox">
+						<div class="goPayBalanceBoxTitle">My Balance</div>
+						<div id="goPayGoPayBalance">0</div>
+					</div>
+					<!-- <table class="goPayMenu">
+						<tr>
+							<td onclick="showGoPayTopup()"><img src="gopay-topup.png" /><div>Top up</div></td>
+							<td><img src="gopay-transfer.png" /><div>Transfer</div></td>
+							<td><img src="gopay-scanqr.png" /><div>Scan QR</div></td>
+						</tr>
+						<tr>
+							<td onclick="showContainer('goPayReceive')"><img src="gopay-receive.png" /><div>Receive</div></td>
+							<td onclick="showContainer('goPayHistory')"><img src="gopay-transactions.png" /><div>Transactions</div></td>
+							<td><img src="gopay-withdraw.png" /><div>Withdraw</div></td>
+						</tr>
+						<tr>
+							<td><img src="gopay-voucher.png" /><div>Voucher</div></td>
+						</tr>
+					</table> -->
+					<table class="goPayMenu">
+						<tr>
+							<td onclick="showGoPayTopup()"><img src="gopay-topup.png" /><div>Top up</div></td>
+							<td onclick="showContainer('goPayReceive')"><img src="gopay-receive.png" /><div>Receive</div></td>
+							<td onclick="showContainer('goPayHistory')"><img src="gopay-transactions.png" /><div>Transactions</div></td>
+						</tr>
+					</table>
 					<div class="loader size36 listLoader"></div>
-					<div>Balance: <span id="goPayGoPayBalance">Rp 0</span></div>
-					<!-- <div id="goFoodOrderList"></div> -->
-					<a href="javascript:showGoPayTopup()">Top up</a>
-					<!-- <a>Transfer</a>
-					<a>Scan QR</a>
-					<a>Receive</a> -->
-					<a href="javascript:showContainer('goPayHistory')">Transactions</a>
-					<!-- <a>Withdraw</a>
-					<a>Voucher</a> -->
+				</div>
+			</div>
+			<div class="container" data-name="goPaySettings">
+				<div class="wrapper">
+					<div class="actionBar">
+						<div><button onclick="showContainer('goPay')" class="backButton"><span class="material-icons">arrow_back</span></button></div>
+						<div class="title">Settings</div>
+					</div>
+					<div>
+						<div class="settingsBox clickable">
+							<div class="primary">Verify Your Account</div>
+							<div class="secondary value">Not implemented yet, will be implemented later</div>
+						</div>
+						<div class="settingsBox clickable">
+							<div class="primary">Bank Account</div>
+							<div class="secondary value">Not implemented yet, will be implemented later</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="container withFlex" data-name="goPayReceive">
+				<div class="wrapper">
+					<div class="actionBar">
+						<div><button onclick="showContainer('goPay')" class="backButton"><span class="material-icons">arrow_back</span></button></div>
+						<div class="title">Receive GO-PAY</div>
+					</div>
+					<div class="listEmpty">Receive payment from another GO-PAY user by asking them to scan this QR code.</div>
+					<div class="card cardContent" style="align-self: center; width: initial;">
+						<div id="goPayQrCode"></div>
+					</div>
 				</div>
 			</div>
 			<div class="container" data-name="goPayHistory">
 				<div class="wrapper">
-					<button onclick='showContainer("goPay")'>< Back</button>
-					<h1>Transactions</h1>
-					<div id="goPayHistory"></div>
+					<div class="actionBar">
+						<div><button onclick="showContainer('goPay')" class="backButton"><span class="material-icons">arrow_back</span></button></div>
+						<div class="title">Transactions</div>
+					</div>
+					<div id="goPayHistory">
+						<div class="textSeparator" id="goPayInProgressTitle">In process</div>
+						<div id="goPayInProgressList"></div>
+						<div class="textSeparator" id="goPayCompletedTitle">Completed</div>
+						<div id="goPayCompletedList"></div>
+					</div>
 					<div class="loader size36 listLoader" style="display: none"></div>
 				</div>
 			</div>
@@ -164,7 +238,6 @@
 							<div class="vDivider"></div>
 							<div class="pointsPlay flexGrow flexCenter">
 								<div class="playIcon"></div>
-								<div class="flexGrow"></div>
 								<button disabled class="colored" id="redeemToken">Play token</button>
 							</div>
 						</div>
@@ -189,7 +262,7 @@
 			<div class="container" data-name="goPointsPlay">
 				<div class="wrapper">
 					<div class="actionBar">
-						<div><button onclick="platterReset(); showContainer('goPoints')"><span class="material-icons">arrow_back</span></button></div>
+						<div><button onclick="platterReset(); showContainer('goPoints')" class="backButton"><span class="material-icons">arrow_back</span></button></div>
 						<div class="title">GO-POINTS</div>
 					</div>
 					<div class="settingsBox flexCenter">
@@ -239,9 +312,12 @@
 			</div>
 			<div class="container" data-name="goFood">
 				<div class="wrapper">
-					<button onclick="showContainer('home')">< Back</button>
-					<h1>GO-FOOD</h1>
-					<div class="flexCenter"><button onclick="showGoFoodSearch()" class="flexGrow">Search...</button><button onclick="showContainer('goFoodOrders')">My orders</button></div>
+					<div class="actionBar">
+						<div><button onclick="showContainer('home')" class="backButton"><span class="material-icons">arrow_back</span></button></div>
+						<div class="title">GO-FOOD</div>
+						<div><button onclick="showContainer('goFoodOrders')">My orders</button></div>
+					</div>
+					<div class="flexCenter"><button onclick="showGoFoodSearch()" class="flexGrow">Search...</button></div>
 					<div id="goFoodHomeContent">
 						<div id="goFoodBanner" class="hero"></div>
 						<div class="threeColumn" id="shortcuts"></div>
@@ -259,10 +335,26 @@
 					<div class="loader size36 listLoader" style="display: none"></div>
 				</div>
 			</div>
+			<div class="container" data-name="goFoodSearchNew">
+				<div class="wrapper">
+					<div class="actionBar">
+						<div><button onclick="showContainer('goFood')" class="backButton"><span class="material-icons">arrow_back</span></button></div>
+						<div class="title"></div>
+					</div>
+					<div class="flexCenter" id="foodSearchNew">
+						<input type="text" placeholder="What would you like to eat?" id="foodSearchQuery" class="flexGrow" />
+						<!-- <button onclick="loadGoFoodSearch()" id="foodSearchQuerySubmit" class="cRight">Search</button> -->
+					</div>
+					<div id="goFoodSearchListNew"></div>
+					<div class="loader size36 listLoader" style="display: none"></div>
+				</div>
+			</div>
 			<div class="container" data-name="goFoodSearch">
 				<div class="wrapper">
-					<button onclick='showContainer("goFood")'>< Back</button>
-					<h1>Search</h1>
+					<div class="actionBar">
+						<div><button onclick="showContainer('goFood')" class="backButton"><span class="material-icons">arrow_back</span></button></div>
+						<div class="title"></div>
+					</div>
 					<div class="flexCenter" id="foodSearch">
 						<input type="text" placeholder="What would you like to eat?" id="foodSearchQuery" class="flexGrow" />
 						<!-- <button onclick="loadGoFoodSearch()" id="foodSearchQuerySubmit" class="cRight">Search</button> -->
@@ -295,11 +387,11 @@
 					</div>
 					<div class="bottomPortion">
 						<div class="title">Please wait</div>
-						<div class="subtitle">Searching for the nearest driver to you</div>
+						<div class="subtitle" id="bookingFindingDriverDesc"></div>
 						<!-- <div class="loader size36"></div> -->
 						<button id="searchingDriverCancel" class="fab" onclick="showContainer('bookingCancel');"><span class="material-icons">clear</span></button>
 					</div>
-					<button class="colored" onclick="showContainer('home')">New order</button>
+					<button class="colored" onclick="closeBooking()">New order</button>
 				</div>
 			</div>
 			<div class="container withFlex" data-name="bookingRate">
